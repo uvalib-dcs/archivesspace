@@ -137,6 +137,13 @@ module Selenium
       end
 
 
+      def element_finder(*selectors)
+        lambda {
+          self.find_element(*selectors)
+        }
+      end
+
+
       alias :find_element_orig :find_element
       def find_element(*selectors)
         wait_for_ajax
@@ -270,6 +277,13 @@ module Selenium
         end
       end
 
+      # for some reason, find :css sometimes doesn't like names with [ ] 
+      def find_input_by_name( name )
+        find_elements(:css, "input" ).each do |input|
+          return input if ( input.attribute("name") == name )
+        end
+        raise Selenium::WebDriver::Error::NoSuchElementError
+      end
 
     end
 
