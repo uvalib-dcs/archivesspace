@@ -1,11 +1,13 @@
 require_relative 'converter'
-
+require_relative 'lib/converter_extra_container_values'
 class EADConverter < Converter
 
   require 'securerandom'
   require_relative 'lib/xml_sax'
   include ASpaceImport::XML::SAX
 
+  # This is included down below #configure since the mixin add to the method..
+  #include ConverterExtraContainerValues
 
   def self.import_types(show_hidden = false)
     [
@@ -174,8 +176,31 @@ class EADConverter < Converter
     end
 
 
-    with 'language' do |node|
-      set ancestor(:resource, :archival_object), :language, att('langcode')
+    with "langmaterial" do
+      # first, assign the primary language to the ead
+      langmaterial = Nokogiri::XML::DocumentFragment.parse(inner_xml)
+      langmaterial.children.each do |child|
+        if child.name == 'language'
+          set ancestor(:resource, :archival_object), :language, child.attr("langcode")
+          break
+        end
+      end
+
+      # write full tag content to a note, subbing out the language tags
+      content = inner_xml
+      next if content =~ /\A<language langcode=\"[a-z]+\"\/>\Z/
+
+      if content.match(/\A<language langcode=\"[a-z]+\"\s*>([^<]+)<\/language>\Z/)
+        content = $1
+      end
+
+      make :note_singlepart, {
+        :type => "langmaterial",
+        :persistent_id => att('id'),
+        :content => format_content( content.sub(/<head>.*?<\/head>/, '') )
+      } do |note|
+        set ancestor(:resource, :archival_object), :notes, note
+      end
     end
 
 
@@ -318,14 +343,9 @@ class EADConverter < Converter
     end
 
 
-    %w(abstract langmaterial materialspec physfacet physloc).each do |note|
+    %w(abstract materialspec physfacet physloc).each do |note|
       with note do |node|
         content = inner_xml
-        next if content =~ /\A<language langcode=\"[a-z]+\"\/>\Z/
-
-        if content.match(/\A<language langcode=\"[a-z]+\"\s*>([^<]+)<\/language>\Z/)
-          content = $1
-        end
 
         make :note_singlepart, {
           :type => note,
@@ -676,6 +696,11 @@ class EADConverter < Converter
    end
   
   end
+ 
+  # We have to put this down here so the mixin doesn't freeeeaaak
+  include ConverterExtraContainerValues
+  
+  
   # Templates Section
 
   def make_corp_template(opts)
