@@ -78,6 +78,7 @@ class NetBadgeAuth
       attributes[:username] = username
       ju = JSONModel(:user).from_hash(attributes)
       User.create_from_json(ju, :source => "local")
+      DBAuth.set_password(username, password)
       puts "Created new user #{username}"
 
       # TODO add to group

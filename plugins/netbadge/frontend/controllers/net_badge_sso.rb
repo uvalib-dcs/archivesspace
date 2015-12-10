@@ -9,7 +9,7 @@ class NetBadgeSSO
       # NOTE: at the moment NetBadge is not configured, so pretend we are pulling
       # a NetBadge generated UID below by hardcoding one
       uid = "lf6f"
-      backend_session = User.login(uid, "")
+      backend_session = User.login(uid, "#{uid}Password!")
       if backend_session
         User.establish_session(context, backend_session, uid)
         return true
