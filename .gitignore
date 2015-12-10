@@ -37,3 +37,4 @@ frontend/node_modules
 locales.diff
 frontend/bower_components
 Gemfile.local
+launcher/lib/mysql*.jar

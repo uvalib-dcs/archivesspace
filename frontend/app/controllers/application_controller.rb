@@ -19,6 +19,8 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  before_filter :sso_authorized?
+
   # Note: This should be first!
   before_filter :store_user_session
 
@@ -31,6 +33,27 @@ class ApplicationController < ActionController::Base
   before_filter :load_repository_list
 
   before_filter :unauthorised_access
+
+  def sso_authorized?
+     # Only do this if configured to do so!
+     return if AppConfig[:sso_enabled].nil? || AppConfig[:sso_enabled] != true
+
+     # if there is session data present, we are already
+     # authorized and nothing else needs to be done
+     return if !session[:session].nil?
+
+     # Instantiate the model configured to handle the check for SSO
+     # authorization and call the authorize method. Pass it self For
+     # context and access to session, and the actual request object
+     puts "====> Check SSO using #{AppConfig[:sso_model]}"
+     sso_model = Object.const_get AppConfig[:sso_model]
+     if sso_model.authorize( self, request  )
+        # Need to load the list here because the method is private,
+        # then redirect to the basic welcome page
+        load_repository_list
+        redirect_to :controller => :welcome, :action => :index
+     end
+  end
 
   def self.permission_mappings
     Array(@permission_mappings)
@@ -169,7 +192,7 @@ class ApplicationController < ActionController::Base
   def find_opts
     {
       "resolve[]" => ["subjects", "related_resources", "linked_agents",
-                      "revision_statements", 
+                      "revision_statements",
                       "container_locations", "digital_object", "classifications",
                       "related_agents", "resource", "parent", "creator",
                       "linked_instances", "linked_records", "related_accessions",
@@ -188,11 +211,11 @@ class ApplicationController < ActionController::Base
   def user_needs_to_be_a_user
     unauthorised_access if not session['user']
   end
-  
+
   def user_needs_to_be_a_user_manager
     unauthorised_access if not user_can? 'manage_users'
   end
-  
+
   def user_needs_to_be_a_user_manager_or_new_user
     unauthorised_access if session['user'] and not user_can? 'manage_users'
   end
@@ -503,7 +526,7 @@ class ApplicationController < ActionController::Base
       params_for_search["filter_term[]"] = Array(params_for_search["filter_term"]).reject{|v| v.blank?}
       params_for_search.delete("filter_term")
     end
-    
+
     if params_for_search["simple_filter"]
       params_for_search["simple_filter[]"] = Array(params_for_search["simple_filter"]).reject{|v| v.blank?}
       params_for_search.delete("simple_filter")

@@ -116,7 +116,20 @@ AppConfig[:public_username] = "public_anonymous"
 
 AppConfig[:staff_username] = "staff_system"
 
-AppConfig[:authentication_sources] = []
+AppConfig[:authentication_sources] = [{
+      :model=>'NetBadgeAuth',
+      :hostname => 'ldap.virginia.edu', :port => 389,
+      :base_dn => 'o=University of Virginia, c=US',
+      :username_attribute => 'uid',
+      :attribute_map => {
+         :cn => :name,
+         :givenName => :first_name, :sn => :last_name,
+         :mail => :email, :title => :title,
+         :uvaDisplayDepartment => :department,
+         :telephoneNumber => :telephone
+      }
+   }
+]
 
 AppConfig[:realtime_index_backlog_ms] = 60000
 
@@ -137,12 +150,15 @@ AppConfig[:report_pdf_font_paths] = proc { ["#{AppConfig[:backend_url]}/reports/
 AppConfig[:report_pdf_font_family] = "\"DejaVu Sans\", sans-serif"
 
 # Plug-ins to load. They will load in the order specified
-AppConfig[:plugins] = ['local',  'lcnaf', 'aspace-public-formats']
+AppConfig[:plugins] = ['local',  'lcnaf', 'aspace-public-formats', 'generate_accession_identifiers', 'netbadge']
+
+# Configuration for netbadge SSO
+AppConfig[:sso_enabled] = true
+AppConfig[:sso_model] = 'NetBadgeSSO'
 
 # URL to direct the feedback link
 # You can remove this from the footer by making the value blank.
 AppConfig[:feedback_url] = "http://archivesspace.org/feedback"
-
 
 #
 # The following are used by the aspace-public-formats plugin
@@ -182,7 +198,7 @@ AppConfig[:max_location_range] = 1000
 # ASpace backend will not start if the db's schema_info version is not set
 # correctly for this version of ASPACE. This is to ensure that all the
 # migrations have run and completed before starting the app. You can override
-# this check here. Do so at your own peril. 
+# this check here. Do so at your own peril.
 AppConfig[:ignore_schema_info_check] = false
 
 # Jasper Reports
@@ -202,7 +218,7 @@ AppConfig[:resequence_on_startup] = false
 
 # This is a URL that points to some demo data that can be used for testing,
 # teaching, etc. To use this, set an OS environment variable of ASPACE_DEMO = true
-AppConfig[:demo_data_url] = "https://s3-us-west-2.amazonaws.com/archivesspacedemo/latest-demo-data.zip" 
+AppConfig[:demo_data_url] = "https://s3-us-west-2.amazonaws.com/archivesspacedemo/latest-demo-data.zip"
 
 # Expose external ids in the frontend
 AppConfig[:show_external_ids] = false
@@ -212,4 +228,4 @@ AppConfig[:show_external_ids] = false
 # When updating from < v1.4.2, you will need to migrate your data to the new
 # container management model. This only needs to be done once during an
 # upgrade.
-AppConfig[:migrate_to_container_management]
+AppConfig[:migrate_to_container_management] = true
