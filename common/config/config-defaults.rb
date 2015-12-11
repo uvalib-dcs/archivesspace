@@ -118,6 +118,7 @@ AppConfig[:staff_username] = "staff_system"
 
 AppConfig[:authentication_sources] = [{
       :model=>'NetBadgeAuth',
+      :default_group=> 'repository-viewers',
       :hostname => 'ldap.virginia.edu', :port => 389,
       :base_dn => 'o=University of Virginia, c=US',
       :username_attribute => 'uid',

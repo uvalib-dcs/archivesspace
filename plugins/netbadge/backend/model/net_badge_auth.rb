@@ -17,11 +17,11 @@ class NetBadgeAuth
    include JSONModel
 
    def initialize(definition)
-      required = [:hostname, :port, :base_dn, :username_attribute, :attribute_map]
+      required = [:default_group, :hostname, :port, :base_dn, :username_attribute, :attribute_map]
       optional = [:bind_dn, :bind_password, :encryption, :extra_filter]
 
       required.each do |param|
-         raise "LDAPAuth: Need a value for parameter :#{param}" if !definition[param]
+         raise "NetBadgeAuth: Need a value for parameter :#{param}" if !definition[param]
          instance_variable_set("@#{param}", definition[param])
       end
 
@@ -65,11 +65,12 @@ class NetBadgeAuth
 
 
    def authenticate(username, password)
-      # Build and return a JSONModel(:user) instance from fields in the database
+      # Try to grab an existing user with this name. If found, return the user
       user = User.find(:username => username)
       return JSONModel(:user).from_hash(:username => username, :name => user.name ) if !user.nil?
 
-      puts "User not found in DB... looking up via LDAP"
+      # No user found create one based on LDAP data
+      Log.info( "User not found in DB... looking up via LDAP")
       bind
       ldap_user = find_user(username)
       attributes = Hash[@attribute_map.map {|ldap_attribute, aspace_attribute|
@@ -77,11 +78,19 @@ class NetBadgeAuth
          }]
       attributes[:username] = username
       ju = JSONModel(:user).from_hash(attributes)
-      User.create_from_json(ju, :source => "local")
+      user = User.create_from_json(ju, :source => "local")
       DBAuth.set_password(username, password)
-      puts "Created new user #{username}"
 
-      # TODO add to group
+      # Grant view access to all repositories for this user by adding them
+      # to the repository-viewers group for each repo
+      Log.info( "Created new user #{username}, adding to #{@default_group} for all repositories...")
+      Repository.all.each do |repo|
+         Log.info("... adding to #{repo.id}:#{repo.name}")
+         RequestContext.open(:repo_id => repo.id) do
+            groups = Group.where(:repo_id => repo.id).where(:group_code => @default_group)
+            user.add_to_groups(groups)
+         end
+      end
 
       return ju
    end
