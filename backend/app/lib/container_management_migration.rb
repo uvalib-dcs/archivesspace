@@ -2,6 +2,13 @@ require_relative 'aspace_json_to_managed_container_mapper'
 
 
 class ContainerManagementMigration
+    
+   
+  def self.already_run?
+      DB.open do |db|
+        return  !db[:system_event].where( :title => "CONTAINER_MANAGEMENT_UPGRADE_COMPLETED" ).empty? 
+      end
+  end
 
   # For performance reasons, we're going to feed the ASpace -> Container
   # Management mapper something that behaves like a JSONModel but isn't fully
@@ -101,6 +108,7 @@ class ContainerManagementMigration
   # expensive SQL queries to search back up the tree.
   class MigrationMapper < AspaceJsonToManagedContainerMapper
 
+
     def initialize(json, new_record, resource_top_containers)
       super(json, new_record)
 
@@ -130,6 +138,20 @@ class ContainerManagementMigration
 
 
   def run
+  
+    # just in case....
+    if self.class.already_run?
+      Log.info("*" * 100 )
+      Log.info("*\t\t How did you get here? The container management conversion process has already run, or at least there's log of it in the system_event table.") 
+      Log.info("*" * 100 )
+      return    
+    end
+    
+    DB.open do |db|
+      db[:system_event].insert(:title => "CONTAINER_MANAGEMENT_UPGRADE_STARTED",
+                                 :time => Time.now)
+    end
+    
     records_migrated = 0
 
     Repository.all.each do |repo|
@@ -190,5 +212,13 @@ class ContainerManagementMigration
         end
       end
     end
+
+    DB.open do |db|
+      db[:system_event].insert(:title => "CONTAINER_MANAGEMENT_UPGRADE_COMPLETED",
+                                 :time => Time.now)
+    end
+
+
+
   end
 end
