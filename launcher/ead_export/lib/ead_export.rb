@@ -15,7 +15,7 @@ class ArchivesSpaceEadExporter
   end
 
   def export(id)
-    params = "include_unpublished=false&include_daos=true&numbered_cs=true"
+    params = "include_unpublished=true&include_daos=true&numbered_cs=true"
     url = URI("#{AppConfig[:backend_url]}/repositories/#{repo_id}/resource_descriptions/#{id}.xml?#{params}")
     get(url, :xml)
   end
