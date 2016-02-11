@@ -31,6 +31,7 @@
 
     <mkdir dir="target/archivesspace/config" />
     <mkdir dir="target/archivesspace/data" />
+    <mkdir dir="target/archivesspace/docs" />
     <mkdir dir="target/archivesspace/wars" />
     <mkdir dir="target/archivesspace/gems" />
     <mkdir dir="target/archivesspace/lib" />
@@ -55,10 +56,25 @@
     <mkdir dir="target/archivesspace/locales" />
 
     <tstamp />
-    <property name="version" value="${DSTAMP}-${TSTAMP}"/>
+    <property name="version" value="${DSTAMP}-${TSTAMP}" />
     <delete file="../common/ARCHIVESSPACE_VERSION" />
     <echo file="../common/ARCHIVESSPACE_VERSION">${version}</echo>
     <echo>Building version: ${version}</echo>
+
+    <!-- Some servlet containers (tomcat) have a hard time finding teh version
+         file. so we can add this as a fallback -->
+    <replaceregexp byline="true" flags="g" file="../common/asconstants.rb" match="fallback_version = &quot;(.*)&quot;" replace="fallback_version = &quot;${version}.a&quot;" />
+
+    <!-- This checks the schema_info -->
+    <!-- count all the rb files in migrations, minus the utils.rb -->
+    <resourcecount property="schema_info">
+      <fileset dir="../common/db/migrations">
+        <include name="*_*.rb" />
+      </fileset>
+    </resourcecount>
+    <!-- now add that value to asconstants -->
+    <replaceregexp byline="true" flags="g" file="../common/asconstants.rb" match="@SCHEMA_INFO = (.\d+)" replace="@SCHEMA_INFO = ${schema_info}" />
+
 
     <jar jarfile="target/archivesspace/lib/common.jar">
       <fileset dir="../common" excludes="lib/*" />
@@ -77,7 +93,7 @@
     <copy file="scripts/migrate_db.rb" todir="target/archivesspace/scripts/rb" />
 
     <copy todir="target/archivesspace/gems">
-      <fileset dir="gems" excludes="cache/*,doc/*,gems/jruby-jars-1.7.11/lib/*.dev.jar,gems/saxon-xslt-0.5.1-java/spec/" />
+      <fileset dir="gems" excludes="cache/*,doc/*,gems/jruby-jars-1.7.11/lib/*.dev.jar,gems/saxon-xslt-0.5.1-java/spec/,gems/warbler-*" />
     </copy>
 
     <copy todir="target/archivesspace/launcher">
@@ -88,46 +104,56 @@
       <fileset dir="../common/locales" />
     </copy>
 
-    <copy todir="target/archivesspace/plugins/local" verbose="true" >
-      <fileset dir="../plugins/local" >
-        <exclude name="**/.gitignore" />
-      </fileset>
+    <copy todir="target/archivesspace/docs">
+      <fileset dir="../docs" />
+    </copy>
+      
+    <copy todir="target/archivesspace/plugins/local" verbose="true">
+      <fileset dir="../plugins/local" />
+    </copy>
+
+    <copy todir="target/archivesspace/plugins/generate_accession_identifiers" verbose="true">
+      <fileset dir="../plugins/generate_accession_identifiers" />
+    </copy>
+
+    <copy todir="target/archivesspace/plugins/yale-ead-exporter" verbose="true">
+      <fileset dir="../plugins/yale-ead-exporter" />
     </copy>
 
     <copy todir="target/archivesspace/plugins/newrelic">
-      <fileset dir="../plugins/newrelic"/>
+      <fileset dir="../plugins/newrelic" />
     </copy>
 
     <copy todir="target/archivesspace/plugins/cat_in_a_box">
-      <fileset dir="../plugins/cat_in_a_box"/>
+      <fileset dir="../plugins/cat_in_a_box" />
     </copy>
 
     <copy todir="target/archivesspace/plugins/refid_rules">
-      <fileset dir="../plugins/refid_rules"/>
+      <fileset dir="../plugins/refid_rules" />
     </copy>
 
     <copy todir="target/archivesspace/plugins/lcnaf">
-      <fileset dir="../plugins/lcnaf"/>
+      <fileset dir="../plugins/lcnaf" />
     </copy>
-    
+
     <copy todir="target/archivesspace/plugins/aspace-public-formats">
-      <fileset dir="../plugins/aspace-public-formats"/>
+      <fileset dir="../plugins/aspace-public-formats" />
     </copy>
 
     <copy todir="target/archivesspace/stylesheets">
-      <fileset dir="../stylesheets"/>
+      <fileset dir="../stylesheets" />
     </copy>
 
     <java classpath="${jruby_classpath}" classname="org.jruby.Main" fork="true" failonerror="true">
-      <jvmarg line="${default_java_options} ${env.JAVA_OPTS}"/>
+      <jvmarg line="${default_java_options} ${env.JAVA_OPTS}" />
       <env key="GEM_HOME" value="${gem_home}" />
       <env key="GEM_PATH" value="" />
       <env key="BUNDLE_PATH" value="${gem_home}" />
       <arg line="-Iapp/lib --1.9 scripts/export_config.rb target/archivesspace/config/config.rb" />
     </java>
 
-	<concat destfile="target/archivesspace/config/config.rb" append="true" >
-		<filelist dir="../common/config" files="config.rb"/>
+	<concat destfile="target/archivesspace/config/config.rb" append="true">
+		<filelist dir="../common/config" files="config.rb" />
 	</concat>
 
     <zip zipfile="../archivesspace-${version}.zip" level="9">
