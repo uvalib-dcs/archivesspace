@@ -17,6 +17,7 @@ class Ticker
 
   def initialize(job)
     @job = job
+    @t0 = Time.new
   end
 
 
@@ -25,7 +26,7 @@ class Ticker
 
 
   def status_update(status_code, status)
-    @job.write_output("#{status[:id]}. #{status_code.upcase}: #{status[:label]}")
+    @job.write_output("#{status[:id]}. #{status_code.upcase}: #{status[:label]} [#{Time.new - @t0}]")
   end
 
 
