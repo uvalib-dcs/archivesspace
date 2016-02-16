@@ -591,6 +591,11 @@ en:
       action:
         add: Add External Document
 
+  external_id:
+    _frontend:
+        action:
+            add: Add External ID
+
   file_version:
     _frontend:
       action:
