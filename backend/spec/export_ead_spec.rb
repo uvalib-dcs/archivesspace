@@ -677,6 +677,7 @@ describe "EAD export mappings" do
           sort_name = agent.names[0]['sort_name']
           rules = agent.names[0]['rules']
           source = agent.names[0]['source']
+          authfilenumber = agent.names[0]['authority_id']
           content = "#{sort_name}"
 
           terms = link[:terms] || link['terms']
@@ -691,6 +692,7 @@ describe "EAD export mappings" do
           mt(rules, path, 'rules')
           mt(source, path, 'source')
           mt(role, path, 'label')
+          mt(authfilenumber, path, 'authfilenumber')
           mt(content.strip, path)
         end
       end
@@ -708,6 +710,7 @@ describe "EAD export mappings" do
 
           mt(term_string, path)
           mt(subject.source, path, 'source')
+          mt(subject.authority_id, path, 'authfilenumber')
         end
       end
     end
