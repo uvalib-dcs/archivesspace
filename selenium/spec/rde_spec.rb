@@ -105,8 +105,10 @@ describe "RDE" do
     @driver.clear_and_send_keys([:id, "archival_record_children_children__0__title_"], "Child 1")
 
     @driver.find_element_with_text("//div[@id='rapidDataEntryModal']//th", /Title/).click
-
+    
+    @modal.find_element(:css, ".btn.add-rows-dropdown").click
     @modal.find_element(:css, ".btn.add-row").click
+    
     @modal.find_element(:id, "archival_record_children_children__1__level_").get_select_value.should eq("fonds")
     @modal.find_element(:id, "archival_record_children_children__1__dates__0__date_type_").get_select_value.should eq("single")
     @modal.find_element(:id, "archival_record_children_children__1__publish_" ).attribute("checked").should be_truthy
@@ -125,25 +127,26 @@ describe "RDE" do
   end
 
   it "can add multiple rows in one action" do
+    
     @driver.find_element(:link, "Rapid Data Entry").click
     modal = @driver.find_element(:id => "rapidDataEntryModal")
 
     modal.find_element(:id, "archival_record_children_children__0__level_").select_option("fonds")
     modal.find_element(:id, "archival_record_children_children__0__publish_").click
 
-    modal.find_element(:css, ".btn.add-rows-dropdown").click
-    #7.times { @modal.find_element(:css, ".add-rows-form input").send_keys(:arrow_up) }
+    @driver.open_rde_add_row_dropdown
     @driver.wait_for_ajax
+
     @driver.clear_and_send_keys([:css, ".add-rows-form input"], "9")
-
-    # this is stupid, but seems to be a flakey issue with Selenium,
-    # especially when headless. The key is not being sent, so we'll try the
-    # up arrow method to add the rows
-
+    
+    @driver.open_rde_add_row_dropdown
     stupid = modal.find_element(:css, ".add-rows-form input").attribute('value')
+   
+    $stderr.puts stupid
     unless stupid == '9'
       9.times { modal.find_element(:css, ".add-rows-form input").send_keys(:arrow_up) }
     end
+    
     @driver.wait_for_ajax
     modal.find_element(:css, ".add-rows-form .btn.btn-primary").click
     @driver.wait_for_ajax
@@ -372,7 +375,7 @@ describe "Digital Object RDE" do
 
     @driver.clear_and_send_keys([:id, "digital_record_children_children__0__label_"], "DO_LABEL")
 
-    modal.find_element(:css, ".btn.add-rows-dropdown").click
+    @driver.open_rde_add_row_dropdown
 
     # 8.times { modal.find_element(:css, ".add-rows-form input").send_keys(:arrow_up) }
     @driver.clear_and_send_keys([:css, ".add-rows-form input"], "9")

@@ -2,6 +2,7 @@ require 'net/http'
 require 'uri'
 require 'json'
 require 'fileutils'
+require 'aspace_i18n'
 
 require 'asutils'
 require 'jsonmodel'
@@ -87,6 +88,31 @@ class CommonIndexer
     ].uniq
   end
 
+
+  def self.extract_string_values(doc)
+    text = ""
+    doc.each do |key, val|
+      if %w(json types create_time date_type jsonmodel_type publish extent_type system_generated suppressed source rules name_order).include?(key)
+      elsif key =~ /_enum_s$/
+      elsif val.is_a?(String)
+        text << "#{val} "
+      elsif val.is_a?(Hash)
+        text << self.extract_string_values(val)
+      elsif val.is_a?(Array)
+        val.each do |v|
+          if v.is_a?(String)
+            text << "#{v} "
+          elsif v.is_a?(Hash)
+            text << self.extract_string_values(v)
+          end
+        end
+      end
+    end
+
+    text
+  end
+
+
   def add_agents(doc, record)
     if record['record']['linked_agents']
       # index all linked agents first
@@ -96,6 +122,22 @@ class CommonIndexer
       # index the creators only
       creators = record['record']['linked_agents'].select{|link| link['role'] === 'creator'}
       doc['creators'] = creators.collect{|link| link['_resolved']['display_name']['sort_name']} if not creators.empty?
+
+      # make a special sort field for each agent
+      # creator > subject > source
+      seen = {}
+      record['record']['linked_agents'].each do |link|
+        if seen[link['ref']] == 'creator'
+          # do nothing
+        elsif seen[link['ref']] == 'subject' && link['role'] != 'creator'
+          # do nothing
+        else
+          relator_label = link['relator'] ? I18n.t("enumerations.linked_agent_archival_record_relators.#{link['relator']}") : ''
+
+          doc["#{link['ref'].gsub(/\//, '_')}_relator_sort"] = "#{link['role']} #{relator_label}"
+          seen[link['ref']] = link['role']
+        end
+      end
     end
   end
 
@@ -115,7 +157,7 @@ class CommonIndexer
 
   def add_notes(doc, record)
     if record['record']['notes']
-      doc['notes'] = record['record']['notes'].to_json
+      doc['notes'] = record['record']['notes'].map {|note| CommonIndexer.extract_string_values(note) }.join(" ");
     end
   end
 
@@ -127,10 +169,23 @@ class CommonIndexer
   end
 
 
+  def add_summary(doc, record)
+    if record['record'].has_key?('notes') && record['record']['notes'].is_a?(Array)
+      notes = record['record']['notes']
+      abstract = notes.find {|note| note['type'] == 'abstract'}
+      if abstract
+        doc['summary'] = abstract['content'].join("\n")
+      else
+        scopecontent = notes.find {|note| note['type'] == 'scopecontent'}
+        if scopecontent
+          doc['summary'] = scopecontent['subnotes'].map {|sn| sn['content']}.join("\n")
+        end
+      end
+    end
+  end
+
+
   def configure_doc_rules
-
-
-
 
     add_delete_hook { |records, delete_request|
       records.each do |rec|
@@ -176,6 +231,7 @@ class CommonIndexer
       add_audit_info(doc, record)
       add_notes(doc, record)
       add_level(doc, record)
+      add_summary(doc, record)
     }
 
     add_document_prepare_hook {|doc, record|
@@ -408,6 +464,22 @@ class CommonIndexer
         doc["container_profile_dimension_units_u_sstr"] = record['record']['dimension_units']
 
         doc['typeahead_sort_key_u_sort'] = record['record']['display_string']
+      end
+    }
+
+
+    add_document_prepare_hook { |doc, record|
+      doc['fullrecord'] = CommonIndexer.extract_string_values(doc)
+      %w(finding_aid_subtitle finding_aid_author).each do |field|
+        if record['record'].has_key?(field)
+          doc['fullrecord'] << "#{record['record'][field]} "
+        end
+      end
+
+      if record['record'].has_key?('names')
+        doc['fullrecord'] << record['record']['names'].map {|name|
+          CommonIndexer.extract_string_values(name)
+        }.join(" ")
       end
     }
 

@@ -7,6 +7,7 @@ describe "Resource instances and containers" do
     set_repo @repo
 
     @resource = create(:resource)
+    @accession = create(:accession)
 
     @location_a = create(:location)
     @location_b = create(:location, {
@@ -51,7 +52,7 @@ describe "Resource instances and containers" do
 
     @driver.wait_for_ajax
 
-    results = @driver.find_element(:id => "bulk-operation-results")
+    results = @driver.find_element(:id => "bulk_operation_results")
 
     results.find_elements(:css => "tbody tr").length.should eq(5)
 
@@ -61,9 +62,9 @@ describe "Resource instances and containers" do
     @driver.wait_for_ajax
 
     
-    @driver.find_element(:css => "#bulk-operation-results tbody tr:first-child td.top-container-indicator").text.should eq('Letter E')
+    @driver.find_element(:css => "#bulk_operation_results tbody tr:first-child td.top-container-indicator").text.should eq('Letter E')
 
-    @driver.find_element(:css => "#bulk-operation-results tbody tr:first-child td:first-child input").click
+    @driver.find_element(:css => "#bulk_operation_results tbody tr:first-child td:first-child input").click
 
     # Now bulk update Letter E's ILD #
     @driver.find_element(:css => ".bulk-operation-toolbar:first-child a.dropdown-toggle").click
@@ -84,7 +85,7 @@ describe "Resource instances and containers" do
 
     modal.find_element(:css => ".modal-footer button").click
 
-    @driver.click_and_wait_until_gone(:css => "#bulk-operation-results tbody tr:first-child td:last-child a:first-child")
+    @driver.click_and_wait_until_gone(:css => "#bulk_operation_results tbody tr:first-child td:last-child a:first-child")
 
     @driver.find_element(:css => ".form-group:nth-child(3) div.label-only").text.should eq("xyzpdq")
   end
@@ -104,6 +105,22 @@ describe "Resource instances and containers" do
 
     modal.find_element(:css => '#top_container_indicator_').send_keys("foo")
     modal.find_element(:css => '#top_container_barcode_').send_keys("1234567")
+
+    modal.find_element(:css => '.dropdown-toggle.last').click
+    sleep(2) 
+    @driver.wait_for_ajax
+    modal.find_element(:css, "a.linker-create-btn").click
+    
+    profile_modal = @driver.test_find_element(:css => '#top_container_container_profile__ref__modal')
+
+    profile_modal.find_element(:css => "#container_profile_name_").send_keys("my profile")
+    profile_modal.find_element(:css => "#container_profile_depth_").send_keys(".1")
+    profile_modal.find_element(:css => "#container_profile_height_").send_keys("0")
+    profile_modal.find_element(:css => "#container_profile_width_").send_keys("6.6")
+    profile_modal.click_and_wait_until_gone(:css => "#createAndLinkButton")
+
+    # re-find our original modal
+    modal = @driver.test_find_element(:css => '#resource_instances__0__sub_container__top_container__ref__modal')
 
     elt = modal.find_element(:css => '#top_container_container_locations_')
     elt.find_element(:css => 'h3 > button').click
@@ -141,6 +158,63 @@ describe "Resource instances and containers" do
       @driver.find_element_with_text('//div[contains(@class, "alert-success")]', /Resource .+ updated/)
     }.to_not raise_error
   end
+  
+  it "can also attach instances to accessions and create containers and locations along the way" do
+
+    @driver.navigate.to("#{$frontend}#{@accession.uri.sub(/\/repositories\/\d+/, '')}/edit")
+    @driver.find_element(:css => '#accession_instances_ .subrecord-form-heading .btn[data-instance-type="sub-container"]').click
+    @driver.find_element(:css => '#accession_instances__0__instance_type_').select_option('text')
+
+    # new
+    elt = @driver.test_find_element(:id => "accession_instances__0__container_")
+    elt.find_element(:css => 'a.dropdown-toggle').click
+    elt.find_element(:css => 'a.linker-create-btn').click
+    modal = @driver.test_find_element(:css => '#accession_instances__0__sub_container__top_container__ref__modal')
+
+    modal.find_element(:css => '#top_container_indicator_').send_keys("oof")
+    modal.find_element(:css => '#top_container_barcode_').send_keys("987654321")
+
+    elt = modal.find_element(:css => '#top_container_container_locations_')
+    elt.find_element(:css => 'h3 > button').click
+
+    assert(5) {
+      elt.find_element(:css => '#top_container_container_locations__0__start_date_').attribute('value').should eq(Time.now.strftime("%Y-%m-%d"))
+    }
+
+    assert(5) {
+      elt.find_element(:css => '#top_container_container_locations__0__end_date_').attribute('value').should eq("")
+    }
+
+    elt.find_element(:css => '.dropdown-toggle.locations').click
+    sleep(2) 
+    @driver.wait_for_ajax
+    elt.find_element(:css, "a.linker-create-btn").click
+
+    sleep(5)
+    loc_modal = @driver.find_element(:id => 'top_container_container_locations__0__ref__modal')
+
+    loc_modal.clear_and_send_keys([:id, "location_building_"], "1129 W. 81st St")
+    loc_modal.clear_and_send_keys([:id, "location_floor_"], "57")
+    loc_modal.clear_and_send_keys([:id, "location_room_"], "67 MOO")
+    loc_modal.clear_and_send_keys([:id, "location_coordinate_1_label_"], "Box ABC")
+    loc_modal.clear_and_send_keys([:id, "location_coordinate_1_indicator_"], "ABC0001")
+    loc_modal.click_and_wait_until_gone(:css => "#createAndLinkButton")
+    
+    sleep(2)
+
+    # re-find our original modal
+    modal = @driver.test_find_element(:css => '#accession_instances__0__sub_container__top_container__ref__modal')
+    sleep(2)
+    modal.find_element(:id => 'createAndLinkButton').click
+
+    @driver.find_element(:css => "form .record-pane button[type='submit']").click
+
+    expect {
+      @driver.find_element_with_text('//div[contains(@class, "alert-success")]', /Accession .+ updated/)
+    }.to_not raise_error
+  end
+
+
 
 
   it "can add a location with a previous status to a top container" do
@@ -178,4 +252,53 @@ describe "Resource instances and containers" do
       @driver.find_element_with_text('//div[contains(@class, "alert-success")]', /Top Container Updated/)
     }.to_not raise_error
   end
+  
+
+  it "can calculate extents" do
+
+    @driver.navigate.to("#{$frontend}#{@resource.uri.sub(/\/repositories\/\d+/, '')}/edit")
+    @driver.find_element(:link, 'Calculate Extent').click
+    
+    modal = @driver.find_element(:id => "extentCalculationModal")
+    modal.find_element(:id => "extent_extent_type_").select_option("volumes")
+    modal.find_element(:link, "Create Extent").click
+
+    @driver.find_element(:css => "form#resource_form button[type='submit']").click
+    @driver.find_element_with_text('//div', /\bResource\b.*\bupdated\b/).should_not be_nil
+    
+     @driver.find_element(:link, 'Close Record').click
+
+    # it can see two Extents on the saved Resource
+    extent_headings = @driver.blocking_find_elements(:css => '#resource_extents_ .panel-heading')
+
+    extent_headings.length.should eq (2)
+    assert(5) { extent_headings[0].text.should match (/^\d.*/) }
+    assert(5) { extent_headings[1].text.should match (/^\d.*/) }
+
+  end
+  
+  it "& fer accessions too!" do
+
+    @driver.navigate.to("#{$frontend}#{@accession.uri.sub(/\/repositories\/\d+/, '')}/edit")
+    @driver.find_element(:link, 'Calculate Extent').click
+    
+    modal = @driver.find_element(:id => "extentCalculationModal")
+    modal.find_element(:id => "extent_extent_type_").select_option("volumes")
+    modal.find_element(:link, "Create Extent").click
+
+    @driver.find_element(:css => "form#accession_form button[type='submit']").click
+    @driver.find_element_with_text('//div', /\bAccession\b.*\bupdated\b/).should_not be_nil
+    
+    @driver.navigate.to("#{$frontend}#{@accession.uri.sub(/\/repositories\/\d+/, '')}")
+    
+
+    # it can see two Extents on the saved Accesion
+    extent_headings = @driver.blocking_find_elements(:css => '#accession_extents_ .panel-heading')
+
+    extent_headings.length.should eq (1)
+    assert(5) { extent_headings[0].text.should match (/^\d.*/) }
+
+  end
+
+
 end

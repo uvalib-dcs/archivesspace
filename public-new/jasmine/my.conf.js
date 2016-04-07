@@ -7,25 +7,37 @@ module.exports = function(config) {
     basePath: '../',
 
 
+    // plugins: [ require('karma-quixote') ],
+
     // frameworks to use
     // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
-    frameworks: ['jasmine'],
+    frameworks: ['jasmine', 'quixote'],
 
 
     // list of files / patterns to load in the browser
     files: [
       'vendor/assets/javascripts/lodash/lodash.js',
+      'vendor/assets/javascripts/lodash-inflection/lodash-inflection.js',
+      'app/assets/javascripts/lodash.aspace.js',
       'vendor/assets/javascripts/jquery/jquery.js',
       'vendor/assets/javascripts/exoskeleton/exoskeleton.js',
       'vendor/assets/javascripts/backbone.paginator/backbone.paginator.js',
-      'vendor/assets/javascripts/foundation/vendor/modernizr.js',
-      'vendor/assets/javascripts/foundation/foundation.js',
-      'vendor/assets/javascripts/foundation/foundation/foundation.reveal.js',
-      'vendor/assets/javascripts/foundation/foundation/foundation.dropdown.js',
-      // 'vendor/assets/javascripts/**/*.js',
+
+      'vendor/assets/javascripts/foundation-sites/foundation.core.js',
+      'vendor/assets/javascripts/foundation-sites/foundation.util.keyboard.js',
+      'vendor/assets/javascripts/foundation-sites/foundation.util.box.js',
+      'vendor/assets/javascripts/foundation-sites/foundation.util.triggers.js',
+      'vendor/assets/javascripts/foundation-sites/foundation.util.mediaQuery.js',
+      'vendor/assets/javascripts/foundation-sites/foundation.util.motion.js',
+
+      'vendor/assets/javascripts/foundation-sites/foundation.reveal.js',
+      'vendor/assets/javascripts/foundation-sites/foundation.dropdown.js',
+      'vendor/assets/javascripts/foundation-sites/foundation.accordion.js',
+      'app/assets/javascripts/record-presenter.js',
       'app/assets/javascripts/*.js',
       'node_modules/jasmine-jquery/lib/jasmine-jquery.js',
       'node_modules/jasmine-ajax/lib/mock-ajax.js',
+      'node_modules/jasmine-fixture/dist/jasmine-fixture.js',
       'jasmine/spec_helper.js',
       'jasmine/*.js',
       {
@@ -34,6 +46,12 @@ module.exports = function(config) {
         included: false,
         served: true
       },
+      {
+        pattern: 'app/assets/stylesheets/application.scss',
+        watched: false,
+        included: false,
+        served: true
+      }
     ],
 
 
@@ -45,6 +63,14 @@ module.exports = function(config) {
     // preprocess matching files before serving them to the browser
     // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
     preprocessors: {
+      'app/assets/stylesheets/application.scss': ['scss']
+    },
+
+    scssPreprocessor: {
+      options: {
+        sourceMap: true,
+        includePaths: ['app/assets/stylesheets', 'vendor/assets/stylesheets']
+      }
     },
 
 
@@ -74,6 +100,7 @@ module.exports = function(config) {
     // start these browsers
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
     browsers: ['Firefox'],
+    // browsers: ['Chrome'],
     // browsers: ['PhantomJS2'],
 
     // Continuous Integration mode

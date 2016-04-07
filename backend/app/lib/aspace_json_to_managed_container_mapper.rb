@@ -35,9 +35,25 @@ class AspaceJsonToManagedContainerMapper
         next
       end
 
+      extent = create_extents_from_container_extents(instance)
+      if extent
+        opts = case @json
+                when JSONModel(:accession)
+                  { :accession_id => @json.class.id_for(@json['uri']) }
+                when JSONModel(:resource)
+                  { :resource_id =>  @json.class.id_for(@json['uri']) }
+                when JSONModel(:archival_object)
+                  { :archival_object_id  => @json.class.id_for(@json['uri']) }
+                end
+
+        Log.info("Creating a new extent record with values #{extent.inspect} #{opts.inspect}")
+        Extent.create_from_json(extent, opts)
+      end
+
       top_container = get_or_create_top_container(instance)
 
       begin
+        exception = nil 
         ensure_harmonious_values(top_container, instance['container'])
       rescue LocationMismatchException => e
         if @json.is_a?(JSONModel(:accession))
@@ -54,7 +70,10 @@ class AspaceJsonToManagedContainerMapper
                                                'type' => container['type_1'], 
                                                'container_locations' => container['container_locations']})
         else
-          raise e
+          # let's store that something bad happened, but we need to make the
+          # rest of the subcontainers so that the instance is linked to
+          # something... 
+          exception = e
         end
       end
 
@@ -82,7 +101,7 @@ class AspaceJsonToManagedContainerMapper
 
 
       instance['sub_container'] = subcontainer
-
+      raise exception if exception
       # No need for the original value now.
       instance.delete('container')
     end
@@ -113,6 +132,7 @@ class AspaceJsonToManagedContainerMapper
 
   def try_matching_indicator_within_record(container)
     indicator = container['indicator_1']
+    type = container["type_1"] 
 
     # Record is being created so nothing to search for yet.
     return nil if !@json['uri']
@@ -130,14 +150,21 @@ class AspaceJsonToManagedContainerMapper
     return nil if !model
 
     id = @json.class.id_for(@json['uri'])
+    return nil if id.to_i == 0 # it's a new record and we have nothing to create. 
 
     join_column = model.association_reflection(:instance)[:key]
-    find_top_container_by_instances(Instance.filter(join_column => id).select(:id), indicator)
+    find_top_container_by_instances(Instance.filter(join_column => id).select(:id), indicator, type)
+  
   end
 
 
   def try_matching_indicator_within_collection(container)
     indicator = container['indicator_1']
+    
+    type_type_id = Enumeration.filter( :name => 'container_type' ).get(:id) 
+    type_id = EnumerationValue.filter( :enumeration_id => type_type_id, :value => container["type_1"] ).get(:id) 
+    
+    return nil if !type_id
 
     resource_uri = @json['resource'] && @json['resource']['ref']
     return nil if !resource_uri
@@ -149,6 +176,7 @@ class AspaceJsonToManagedContainerMapper
                               where { Sequel.|({:archival_object__root_record_id => resource_id},
                                                {:instance__resource_id => resource_id}) }.
                               filter(:top_container__indicator => indicator).
+                              filter(:top_container__type_id => type_id).
                               select(:top_container_id)
 
     TopContainer[:id => matching_top_containers]
@@ -157,7 +185,11 @@ class AspaceJsonToManagedContainerMapper
 
 
   def ensure_harmonious_values(top_container, aspace_container)
-    properties = {:indicator => 'indicator_1', :barcode => 'barcode_1'}
+    properties = {:indicator => 'indicator_1', :barcode => 'barcode_1', :type_id => 'type_id'}
+
+    # we jam the type id into the hash here...uck.
+    type = EnumerationValue.filter(  :id => top_container[:type_id] ).get(:id) 
+    aspace_container["type_id"] = type
 
     properties.each do |top_container_property, aspace_property|
       if aspace_container[aspace_property] && top_container[top_container_property] != aspace_container[aspace_property]
@@ -231,6 +263,17 @@ class AspaceJsonToManagedContainerMapper
     @new_record
   end
 
+  def create_extents_from_container_extents(instance)
+    container = instance['container']
+    extent= nil 
+    if ( container["container_extent"] && container["container_extent_type"] )
+      extent = JSONModel(:extent).from_hash({:number => container["container_extent"], 
+                :extent_type => container["container_extent_type"],
+                :portion => "whole"
+                })
+    end
+    extent 
+  end
 
   def get_or_create_top_container(instance)
     container = instance['container']
@@ -244,34 +287,41 @@ class AspaceJsonToManagedContainerMapper
       return result
     else
       indicator = container['indicator_1']
+      type = container["type_1"]
 
-      match = try_matching_indicator(container, indicator)
+      match = try_matching_indicator_and_type(container, indicator, type)
 
       if match
         return match
       end
     end
-
-    Log.info("Creating a new Top Container for a container with no barcode")
-    create_top_container({'indicator' => (container['indicator_1'] || get_default_indicator),
-                          'container_locations' => container['container_locations']})
+   
+    
+    Log.info("Creating a new Top Container for a container with no barcode, type: #{ container["type_1"] }, indicator #{container['indicator_1'] || get_default_indicator}")
+    create_top_container( {'indicator' => (container['indicator_1'] || get_default_indicator),
+                         'type' => container["type_1"],  
+                         'container_locations' => container['container_locations']})
   end
 
 
   def create_top_container(values)
     created = TopContainer.create_from_json(JSONModel(:top_container).from_hash(values))
     @new_top_containers << created
-
+    Log.info("Top Container created : #{created.inspect}")
     created
   end
 
 
-  def try_matching_indicator(container, indicator)
+  def try_matching_indicator_and_type(container, indicator, type)
     return nil if !indicator
+    
+    type_type_id = Enumeration.filter( :name => 'container_type' ).get(:id) 
+    type_id= EnumerationValue.filter( :enumeration_id => type_type_id, :value => container["type_1"] ) 
+    return nil if !type_id
 
     # If we've created a matching top container for this record already, use that.
     @new_top_containers.each do |top_container|
-      if top_container.indicator == indicator
+      if top_container.indicator == indicator && top_container.type_id == type_id
         return top_container
       end
     end
@@ -284,7 +334,7 @@ class AspaceJsonToManagedContainerMapper
   end
 
 
-  def get_default_indicator(prefix = 'system_indicator')
+  def get_default_indicator(prefix = 'data_value_missing')
     "#{prefix}_#{SecureRandom.hex}"
   end
 
@@ -313,14 +363,17 @@ class AspaceJsonToManagedContainerMapper
   end
 
 
-  def find_top_container_by_instances(instance_ds, indicator)
+  def find_top_container_by_instances(instance_ds, indicator, type)
     # All subcontainers linked to our instances
     subcontainer_ds = SubContainer.filter(:instance_id => instance_ds)
 
     relationship_model = SubContainer.find_relationship(:top_container_link)
     top_containers_for_subcontainers = relationship_model.filter(:sub_container_id => subcontainer_ds.select(:id)).select(:top_container_id)
+    
+    type_type_id = Enumeration.filter( :name => 'container_type' ).get(:id) 
+    type_id = EnumerationValue.filter( :enumeration_id => type_type_id, :value => type ).get(:id)
 
-    TopContainer[:indicator => indicator,
+    TopContainer[:indicator => indicator, :type_id => type_id, 
                  :id => top_containers_for_subcontainers]
   end
 
