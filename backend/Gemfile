@@ -48,13 +48,3 @@ gem "zip-zip", "0.3"
 require 'asutils'
 ASUtils.load_plugin_gems(self)
 
-#
-# debug & development gems
-group :development do
-  gem 'awesome_print'
-  gem 'pry'
-  gem 'pry-nav'
-  gem 'pry-doc'
-  gem 'pry-rails'
-  gem 'pry-remote'
-end
