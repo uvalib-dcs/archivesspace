@@ -1,0 +1,55 @@
+
+AppConfig[:backend_log_level] = "info"
+AppConfig[:hostname] = proc { Socket.gethostname }
+AppConfig[:environment] = :test
+
+AppConfig[:frontend_proxy_url] = proc { "http://#{AppConfig[:hostname]}" }
+AppConfig[:public_proxy_url] = proc { "http://#{AppConfig[:hostname]}:8081" }
+
+
+if AppConfig[:environment] == :production # production
+  AppConfig[:db_url] = "jdbc:mysql://mysql.lib.virginia.edu:3306/archivesspace?useUnicode=true&characterEncoding=UTF-8&user=archivesspace&password=*"
+elsif AppConfig[:environment] == :development # development
+  # AppConfig[:frontend_theme] = "red"  # just for fun and to make clear I'm on localhost
+  AppConfig[:db_url] = "jdbc:mysql://localhost:3306/archivesspace?useUnicode=true&characterEncoding=UTF-8&user=archivesspace&password=*"
+else
+  # else use default demo db for :test and alternate port numbers
+  AppConfig[:solr_url] = "http://localhost:18090"
+  AppConfig[:indexer_url] = "http://localhost:18091"
+  AppConfig[:public_url] = "http://localhost:18081"
+  AppConfig[:backend_url] = "http://localhost:18089"
+  AppConfig[:frontend_url] = "http://localhost:18080"
+  AppConfig[:docs_url] = "http://localhost:18888"  
+  AppConfig[:frontend_proxy_url] = proc { "http://#{AppConfig[:hostname]}:18080" }
+  AppConfig[:public_proxy_url] = proc { "http://#{AppConfig[:hostname]}:18081" }  
+end
+
+
+
+
+
+AppConfig[:plugins] << 'yale-ead-exporter'   # 'lcnaf' now included by default
+AppConfig[:plugins] << 'generate_accession_identifiers' 
+
+AppConfig[:use_jetty_shutdown_handler] = true  
+# AppConfig[:resequence_on_startup] = true
+
+AppConfig[:show_external_ids] = true
+
+AppConfig[:public_formats_resource_links] = ["ead", "marcxml", "ead_pdf"]
+AppConfig[:public_formats_digital_object_links] = ["dc", "mets", "mods"]
+
+AppConfig[:authentication_sources] = [{  
+                            :model => 'LDAPAuth',
+                            :hostname => 'ldap.virginia.edu', :port => 389,
+                            :base_dn => 'o=University of Virginia, c=US',
+                            :username_attribute => 'uid',
+                            :attribute_map => {:cn => :name, 
+                                    :givenName => :first_name, :sn => :last_name, 
+                                    :mail => :email, :title => :title, 
+                                    :uvaDisplayDepartment => :department, 
+                                    :telephoneNumber => :telephone },  }]
+
+# When updating from < v1.4.2, you will need to migrate your data to the new
+# container management model. This only needs to be done once during an upgrade.
+#AppConfig[:migrate_to_container_management] = true      # ***NEEDS*** to be set here as there is no default value set.
