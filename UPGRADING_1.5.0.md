@@ -58,11 +58,12 @@ If you have a box and folder associated with a component (or any other hierarchi
 
 ##Conversion
 
-When upgrading from 1.4.2 (and earlier versions) to 1.5.0, the container conversion will happen as part of the upgrade process. You will be able to follow its progress in the log. Instructions for upgrading from a previous version of ArchivesSpace are available at [https://github.com/archivesspace/archivesspace/blob/c53b45df2b4bb2656c0d30f7223d63657e2987bb/UPGRADING_1.5.0.md]. 
+When upgrading from 1.4.2 (and earlier versions) to 1.5.0, the container conversion will happen as part of the upgrade process. You will be able to follow its progress in the log. Instructions for upgrading from a previous version of ArchivesSpace are available at [https://github.com/archivesspace/archivesspace/blob/master/UPGRADING.md]. 
 
 Because this is a major change in the data model for this portion of the application, running at least one test conversion is very strongly recommended. Follow these steps to run the upgrade/conversion process:
 * Create a backup of your ArchivesSpace instance to use for testing. **IT IS ESSENTIAL THAT YOU NOT RUN THIS ON A PRODUCTION INSTANCE AS THE CONVERSION CHANGES YOUR DATA, and THE CHANGES CANNOT BE UNDONE EXCEPT BY REVERTING TO A BACKUP VERSION OF YOUR DATA PRIOR TO RUNNING THE CONVERSION.**
 * Follow the upgrade instructions to unpack a fresh copy of the v 1.5.0 release made available for testing, copy your configuration and data files, and transfer your locales.
+* **It is recommended that you delete your Solr index files to start with a fresh index** We are upgrading the version of Solr that ships with the application, and the upgrade will require a total reindex of your ArchivesSpace data. To do this, delete the data/solr_index/index directory and the files in data/indexer_state.  
 * Follow the upgrade instructions to run the database migrations. As part of this step, your container data will be converted to the new data model. You can follow along in the log. Windows users can open the archivesspace.out file in a tool like Notepad ++. Mac users can do a tail –f logs/archivesspace.out to get a live update from the log.
 * When the test conversion has been completed, the log will indicate "Completed: existing containers have been migrated to the new container model." 
 
