@@ -1,0 +1,4 @@
+en:
+    plugins:
+        debug_env:
+            label: Request Environment
