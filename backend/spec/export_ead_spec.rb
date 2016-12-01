@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'nokogiri'
 require 'spec_helper'
 require_relative 'export_spec_helper'
@@ -74,7 +75,8 @@ describe "EAD export mappings" do
                       :instances => instances,
                       :finding_aid_status => %w(completed in_progress under_revision unprocessed).sample,
                       :finding_aid_filing_title => "this is a filing title",
-                      :finding_aid_series_statement => "here is the series statement"
+                      :finding_aid_series_statement => "here is the series statement",
+                      :publish => true,
                       )
 
     @resource = JSONModel(:resource).find(resource.id)
@@ -88,7 +90,8 @@ describe "EAD export mappings" do
                  :notes => build_archival_object_notes(5),
                  :linked_agents => build_linked_agents(@agents),
                  :instances => [build(:json_instance_digital), build(:json_instance)],
-                 :subjects => @subjects.map{|ref, s| {:ref => ref}}.shuffle
+                 :subjects => @subjects.map{|ref, s| {:ref => ref}}.shuffle,
+                 :publish => true,
                  )
 
       a = JSONModel(:archival_object).find(a.id)
@@ -698,6 +701,26 @@ describe "EAD export mappings" do
       end
 
 
+      # AR-1459
+      it "maps linked agents with role 'creator' to {desc_path}/did/origination/NODE" do
+        object.linked_agents.each do |link|
+          link_role = link[:role] || link['role']
+          next unless link_role == 'creator'
+
+          ref = link[:ref] || link['ref']
+          agent = @agents[ref]
+          node_name = case agent.agent_type
+                      when 'agent_person'; 'persname'
+                      when 'agent_family'; 'famname'
+                      when 'agent_corporate_entity'; 'corpname'
+                      end
+
+          path = "#{desc_path}/did/origination/#{node_name}[contains(text(), '#{agent.names[0]['sort_name']}')]"
+          doc.should have_node(path)
+        end
+      end
+
+
       it "maps linked subjects to {desc_path}/controlaccess/NODE" do
         object.subjects.each do |link|
           ref = link[:ref] || link['ref']
@@ -1023,6 +1046,7 @@ describe "EAD export mappings" do
     let(:note_with_linebreaks_and_evil_mixed_content) { "Something, something,\n\n<bioghist>something.\n\n</bioghist>\n\n" }
     let(:note_with_linebreaks_but_something_xml_nazis_hate) { "Something, something,\n\n<prefercite>XML & How to Live it!</prefercite>\n\n" }
     let(:note_with_linebreaks_and_xml_namespaces) { "Something, something,\n\n<prefercite xlink:foo='one' ns2:bar='two' >XML, you so crazy!</prefercite>\n\n" }
+    let(:note_with_smart_quotes) {"This note has “smart quotes” and ‘smart apostrophes’ from MSWord."}
     let(:serializer) { EADSerializer.new }
 
     it "can strip <p> tags from content when disallowed" do
@@ -1044,14 +1068,76 @@ describe "EAD export mappings" do
     it "will return original content when linebreaks and mixed content produce invalid markup" do
       serializer.handle_linebreaks(note_with_linebreaks_and_evil_mixed_content).should eq(note_with_linebreaks_and_evil_mixed_content)
     end
-    
+
     it "will add <p> tags to content with linebreaks and mixed content even if those evil &'s are present in the text" do
       serializer.handle_linebreaks(note_with_linebreaks_but_something_xml_nazis_hate).should eq("<p>Something, something,</p><p><prefercite>XML &amp; How to Live it!</prefercite></p>")
     end
-    
+
     it "will add <p> tags to content with linebreaks and mixed content even there are weird namespace prefixes" do
       serializer.handle_linebreaks(note_with_linebreaks_and_xml_namespaces).should eq("<p>Something, something,</p><p><prefercite xlink:foo='one' ns2:bar='two' >XML, you so crazy!</prefercite></p>")
     end
 
+    it "will replace MSWord-style smart quotes with ASCII characters" do
+      serializer.remove_smart_quotes(note_with_smart_quotes).should eq("This note has \"smart quotes\" and \'smart apostrophes\' from MSWord.")
+    end
+
+  end
+
+
+  describe "Test unpublished record EAD exports" do
+
+    def get_xml_doc(include_unpublished = false)
+      as_test_user("admin") do
+        DB.open(true) do
+          doc_for_unpublished_resource = get_xml("/repositories/#{$repo_id}/resource_descriptions/#{@unpublished_resource_jsonmodel.id}.xml?include_unpublished=#{include_unpublished}&include_daos=true", true)
+
+          doc_nsless_for_unpublished_resource = Nokogiri::XML::Document.parse(doc_for_unpublished_resource)
+          doc_nsless_for_unpublished_resource.remove_namespaces!
+
+          return doc_nsless_for_unpublished_resource
+        end
+      end
+    end
+
+    before(:all) {
+      unpublished_resource = create(:json_resource,
+                                    :publish => false)
+
+      @unpublished_resource_jsonmodel = JSONModel(:resource).find(unpublished_resource.id)
+
+      @published_archival_object = create(:json_archival_object_normal,
+                                          :resource => {:ref => @unpublished_resource_jsonmodel.uri},
+                                          :publish => true)
+
+      @unpublished_archival_object = create(:json_archival_object_normal,
+                                            :resource => {:ref => @unpublished_resource_jsonmodel.uri},
+                                            :publish => false)
+
+      @xml_including_unpublished = get_xml_doc(include_unpublished = true)
+      @xml_not_including_unpublished = get_xml_doc(include_unpublished = false)
+    }
+
+    it "does not set <ead> attribute audience 'internal' when resource is published" do
+      @doc_nsless.at_xpath('//ead').should_not have_attribute('audience', 'internal')
+    end
+
+    it "sets <ead> attribute audience 'internal' when resource is not published" do
+      @xml_including_unpublished.at_xpath('//ead').should have_attribute('audience', 'internal')
+      @xml_not_including_unpublished.at_xpath('//ead').should have_attribute('audience', 'internal')
+    end
+
+    it "includes unpublished items when include_unpublished option is false" do
+      @xml_including_unpublished.xpath('//c').length.should eq(2)
+      @xml_including_unpublished.xpath("//c[@id='aspace_#{@published_archival_object.ref_id}'][not(@audience='internal')]").length.should eq(1)
+      @xml_including_unpublished.xpath("//c[@id='aspace_#{@unpublished_archival_object.ref_id}'][@audience='internal']").length.should eq(1)
+    end
+
+    it "does not include unpublished items when include_unpublished option is false" do
+      items = @xml_not_including_unpublished.xpath('//c')
+      items.length.should eq(1)
+
+      item = items.first
+      item.should_not have_attribute('audience', 'internal') 
+    end
   end
 end

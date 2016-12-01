@@ -8,7 +8,7 @@ describe "Tree UI" do
 
     @viewer_user = create_user(@repo => ['repository-viewers'])
 
-    @driver = Driver.new
+    @driver = Driver.get
     @driver.login_to_repo($admin, @repo)
   end
 
@@ -68,7 +68,7 @@ describe "Tree UI" do
 
     @driver.action.drag_and_drop_by(source, 0, y_off).perform
     @driver.wait_for_ajax
-    @driver.wait_until_gone(:css, ".spinner")
+    @driver.wait_for_spinner
 
 
     target = @driver.find_element(:id, js_node(@a2).li_id)
@@ -111,7 +111,6 @@ describe "Tree UI" do
 
     @driver.find_element(:id, js_node(@a3).a_id).click
     @driver.wait_for_ajax
-    @driver.wait_until_gone(:css, ".spinner")
 
     @driver.clear_and_send_keys([:id, "archival_object_title_"], @a3.title.sub(/Archival Object/, "Resource Component"))
 
@@ -121,8 +120,6 @@ describe "Tree UI" do
     # now do a drag and drop
     @driver.action.drag_and_drop(moving, target).perform
     @driver.wait_for_ajax
-    @driver.wait_until_gone(:css, ".spinner")
-
 
     # save the item
     @driver.click_and_wait_until_gone(:css => "form#archival_object_form button[type='submit']")
@@ -155,7 +152,6 @@ describe "Tree UI" do
     [@a2, @a3].each do |sibling|
       @driver.find_element(:id => js_node(sibling).a_id).click
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
 
       @driver.find_element(:link, "Move").click
       
@@ -163,21 +159,20 @@ describe "Tree UI" do
       @driver.mouse.move_to el
 
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
 
       @driver.find_element(:css => "div.move-node-menu")
         .find_element(:xpath => ".//a[@data-target-node-id='#{js_node(@a1).li_id}']")
         .click
 
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
+      @driver.wait_for_spinner
       sleep(2)
     end
 
     2.times {|i|
       @driver.find_element(:id => js_node(@a1).a_id).click
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
+      # @driver.wait_for_spinner
       [@a2, @a3].each do |child|
         @driver.find_element(:id => js_node(@a1).li_id)
           .find_element(:id => js_node(child).li_id)
@@ -190,13 +185,12 @@ describe "Tree UI" do
     [@a2, @a3].each do |child|
       @driver.find_element(:id => js_node(child).a_id).click
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
 
       @driver.find_element(:link, "Move").click
       @driver.find_element_with_text("//a", /Up a Level/).click
 
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
+      @driver.wait_for_spinner
 
       sleep(2)
     end
@@ -282,20 +276,14 @@ describe "Tree UI" do
       y_off = target.location[:y] - source.location[:y]
      
       @driver.action.drag_and_drop_by(source, 0, y_off - 10).perform
-      @driver.wait_until_gone(:css, ".spinner")
-      
-      sleep(2)
+      @driver.wait_for_spinner
       @driver.wait_for_ajax
 
       @driver.find_element_with_text("//div[@id='archives_tree']//a", /#{ao}/).click
-      sleep(2) 
       @driver.find_element(:link, "Move").click
-      sleep(2) 
       @driver.find_element(:link, "Up").click
-      sleep(2) 
+      @driver.wait_for_spinner
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
-      sleep(5)
       
       @driver.find_element_with_text("//div", /Please click to load records/).click
       
@@ -326,23 +314,14 @@ describe "Tree UI" do
     # now lets add some more and move them around
     [ "Santa Crap", "Japanese KFC", "Kalle Anka"].each do |ao|
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
       @driver.find_element(:id, js_node(@r).li_id).click
       
       @driver.wait_for_ajax
       @driver.find_element_with_text("//div[@id='archives_tree']//a", /Gifts/).click
       @driver.wait_for_ajax
       sleep(2)    
-      
-      # lets make sure the form is unlocked..
-      #begin
-      #  @driver.find_element_orig(:css, "div.unlock-notice div.alert").click
-      #rescue
-        #forgetabowit 
-      #end
 
-      
-      
+
       @driver.click_and_wait_until_gone(:link, "Add Sibling")
       @driver.clear_and_send_keys([:id, "archival_object_title_"], ao)
       @driver.find_element(:id, "archival_object_level_").select_option("item")
@@ -354,11 +333,10 @@ describe "Tree UI" do
       y_off = target.location[:y] - source.location[:y]
       @driver.action.drag_and_drop_by(source, 0, y_off).perform
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
+      @driver.wait_for_spinner
     end
    
     wait = Selenium::WebDriver::Wait.new(:timeout => 40)
-    @driver.wait_until_gone(:css, ".spinner")
     @driver.find_element(:id, js_node(@r).li_id).click
     @driver.click_and_wait_until_gone(:link, 'Close Record')
     @driver.wait_for_ajax
@@ -422,7 +400,6 @@ describe "Tree UI" do
 
     # we cycle these nodes around in a circle.
     3.times do
-      @driver.wait_until_gone(:css, ".spinner")
       a =  @driver.element_finder(:xpath => "//div[@id='archives_tree']//li[a/@title='#{@a1.title}']/ul/li[7]/a")
       b =  @driver.element_finder(:xpath => "//div[@id='archives_tree']//li[a/@title='#{@a1.title}']/ul/li[9]/a")
       target =  @driver.find_elements(
@@ -435,7 +412,7 @@ describe "Tree UI" do
       @driver.action.drag_and_drop_by(a.call, 0, offset).perform
 
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
+      @driver.wait_for_spinner
     end
 
     # everything should be normal
@@ -447,7 +424,6 @@ describe "Tree UI" do
 
     # now lets cycles in reverse
     3.times do
-      @driver.wait_until_gone(:css, ".spinner")
       a =  @driver.element_finder(:xpath => "//div[@id='archives_tree']//li[a/@title='#{@a1.title}']/ul/li[1]/a")
       b =  @driver.element_finder(:xpath => "//div[@id='archives_tree']//li[a/@title='#{@a1.title}']/ul/li[3]/a")
       target =  @driver.find_elements(
@@ -461,7 +437,7 @@ describe "Tree UI" do
       @driver.action.drag_and_drop_by(a.call, 0, offset).perform
 
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
+      @driver.wait_for_spinner
     end
 
     # back to normal
@@ -473,7 +449,6 @@ describe "Tree UI" do
 
     # now lets stick some in the middle
     2.times do
-      @driver.wait_until_gone(:css, ".spinner")
       a =  @driver.element_finder(:xpath => "//div[@id='archives_tree']//li[a/@title='#{@a1.title}']/ul/li[1]/a")
       b =  @driver.element_finder(:xpath => "//div[@id='archives_tree']//li[a/@title='#{@a1.title}']/ul/li[3]/a")
       target =  @driver.find_elements(
@@ -486,7 +461,7 @@ describe "Tree UI" do
       @driver.action.drag_and_drop_by(a.call, 0, offset).perform
 
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
+      @driver.wait_for_spinner
     end
 
     # and again back to normal
@@ -503,9 +478,9 @@ describe "Tree UI" do
                  :xpath => "//div[@id='archives_tree']//li[a/@title='#{@a1.title}']")
 
     offset = ( ( target.location[:y] - a.location[:y] ) - 9 )
-    @driver.action.click(a).key_down(:shift).click(b).key_up(:shift).drag_and_drop_by(a, 0, offset).perform
+    @driver.action.click(a).key_down(:shift).click(b).key_up(:shift).drag_and_drop_by(a, 0, offset).perform #fails here
     @driver.wait_for_ajax
-    @driver.wait_until_gone(:css, ".spinner")
+    @driver.wait_for_spinner
 
     # heres the new order of our AOs. all on one level
     new_order = (0..8).to_a + [ @a1.title, @a2.title, @a3.title ]
@@ -519,7 +494,6 @@ describe "Tree UI" do
 
     # let's cycle bottom to top
     4.times do
-      @driver.wait_until_gone(:css, ".spinner")
       new_order = new_order.pop(3) + new_order
       a =  @driver.find_elements(:xpath => "//li[a/@title='#{@r.title}']/ul/li/a")[-3]
       b =  @driver.find_elements(:xpath => "//li[a/@title='#{@r.title}']/ul/li/a").last
@@ -528,7 +502,7 @@ describe "Tree UI" do
       offset = ( ( target.location[:y] - a.location[:y] ) - 9 )
       @driver.action.click(a).key_down(:shift).click(b).key_up(:shift).drag_and_drop_by(a, 0, offset).perform
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
+      @driver.wait_for_spinner
       new_order.each_with_index do |v, i|
         assert(5) {
           @driver.find_element( :xpath => "//li[a/@title='#{@r.title}']/ul/li[position() = #{i + 1 }]/a/span/span[@class='title-column pull-left']").text.should match(/#{v}/)
@@ -538,7 +512,6 @@ describe "Tree UI" do
 
     # let's cycle top to bottom
     4.times do
-      @driver.wait_until_gone(:css, ".spinner")
       n = new_order.shift(3)
       new_order =  new_order + n
       a =  @driver.find_elements(:xpath => "//li[a/@title='#{@r.title}']/ul/li/a").first
@@ -548,7 +521,7 @@ describe "Tree UI" do
       offset = ( ( target.location[:y] - a.location[:y] ) + 9 )
       @driver.action.click(a).key_down(:shift).click(b).key_up(:shift).drag_and_drop_by(a, 0, offset).perform
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
+      @driver.wait_for_spinner
       new_order.each_with_index do |v, i|
         assert(5) {
           @driver.find_element( :xpath => "//li[a/@title='#{@r.title}']/ul/li[position() = #{i + 1 }]/a/span/span[@class='title-column pull-left']").text.should match(/#{v}/)
@@ -558,7 +531,6 @@ describe "Tree UI" do
 
     # let's move top 3 into the middle and see if that works
     2.times do
-      @driver.wait_until_gone(:css, ".spinner")
       n = new_order.shift(3)
       new_order.insert(3, n).flatten!
 
@@ -569,7 +541,7 @@ describe "Tree UI" do
       offset = ( ( target.location[:y] - a.location[:y] ) + 7 )
       @driver.action.click(a).key_down(:shift).click(b).key_up(:shift).drag_and_drop_by(a, 0, offset).perform
       @driver.wait_for_ajax
-      @driver.wait_until_gone(:css, ".spinner")
+      @driver.wait_for_spinner
       new_order.each_with_index do |v, i|
         assert(5) {
           @driver.find_element( :xpath => "//li[a/@title='#{@r.title}']/ul/li[position() = #{i + 1 }]/a/span/span[@class='title-column pull-left']").text.should match(/#{v}/)

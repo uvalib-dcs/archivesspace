@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'nokogiri'
 require 'securerandom'
 require_relative "../lib/serialize_extra_container_values"
@@ -33,11 +34,11 @@ class EADSerializer < ASpaceExport::Serializer
   def xml_errors(content)
     # there are message we want to ignore. annoying that java xml lib doesn't
     # use codes like libxml does...
-    ignore = [ /Namespace prefix .* is not defined/, /The prefix .* is not bound/  ] 
-    ignore = Regexp.union(ignore) 
+    ignore = [ /Namespace prefix .* is not defined/, /The prefix .* is not bound/  ]
+    ignore = Regexp.union(ignore)
     # the "wrap" is just to ensure that there is a psuedo root element to eliminate a "false" error
     Nokogiri::XML("<wrap>#{content}</wrap>").errors.reject { |e| e.message =~ ignore  }
-  end 
+  end
 
 
   def handle_linebreaks(content)
@@ -50,7 +51,7 @@ class EADSerializer < ASpaceExport::Serializer
     else
       content = "<p>#{content.strip}</p>"
     end
-   
+
     # first lets see if there are any &
     # note if there's a &somewordwithnospace , the error is EntityRef and wont
     # be fixed here...
@@ -59,16 +60,24 @@ class EADSerializer < ASpaceExport::Serializer
     end
 
     # in some cases adding p tags can create invalid markup with mixed content
-    # just return the original content if there's still problems 
-    xml_errors(content).any? ? original_content : content 
+    # just return the original content if there's still problems
+    xml_errors(content).any? ? original_content : content
   end
 
   def strip_p(content)
     content.gsub("<p>", "").gsub("</p>", "").gsub("<p/>", '')
   end
 
+  def remove_smart_quotes(content)
+    content = content.gsub(/\xE2\x80\x9C/, '"').gsub(/\xE2\x80\x9D/, '"').gsub(/\xE2\x80\x98/, "\'").gsub(/\xE2\x80\x99/, "\'")
+  end
+
   def sanitize_mixed_content(content, context, fragments, allow_p = false  )
 #    return "" if content.nil?
+
+    # remove smart quotes from text
+    content = remove_smart_quotes(content)
+
     # br's should be self closing
     content = content.gsub("<br>", "<br/>").gsub("</br>", '')
     # lets break the text, if it has linebreaks but no p tags.
@@ -94,15 +103,24 @@ class EADSerializer < ASpaceExport::Serializer
     @stream_handler = ASpaceExport::StreamHandler.new
     @fragments = ASpaceExport::RawXMLHandler.new
     @include_unpublished = data.include_unpublished?
+    @include_daos = data.include_daos?
     @use_numbered_c_tags = data.use_numbered_c_tags?
     @id_prefix = I18n.t('archival_object.ref_id_export_prefix', :default => 'aspace_')
 
     doc = Nokogiri::XML::Builder.new(:encoding => "UTF-8") do |xml|
       begin
 
-      xml.ead(                  'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance',
-                 'xsi:schemaLocation' => 'urn:isbn:1-931666-22-9 http://www.loc.gov/ead/ead.xsd',
-                 'xmlns:xlink' => 'http://www.w3.org/1999/xlink') {
+      ead_attributes = {
+        'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance',
+        'xsi:schemaLocation' => 'urn:isbn:1-931666-22-9 http://www.loc.gov/ead/ead.xsd',
+        'xmlns:xlink' => 'http://www.w3.org/1999/xlink'
+      }
+
+      if data.publish === false
+        ead_attributes['audience'] = 'internal'
+      end
+
+      xml.ead( ead_attributes ) {
 
         xml.text (
           @stream_handler.buffer { |xml, new_fragments|
@@ -110,20 +128,9 @@ class EADSerializer < ASpaceExport::Serializer
           })
 
         atts = {:level => data.level, :otherlevel => data.other_level}
-
-        if data.publish === false
-          if @include_unpublished
-            atts[:audience] = 'internal'
-          else
-            return
-          end
-        end
-
         atts.reject! {|k, v| v.nil?}
 
         xml.archdesc(atts) {
-
-
 
           xml.did {
 
@@ -261,7 +268,7 @@ class EADSerializer < ASpaceExport::Serializer
           case
           when inst.has_key?('container') && !inst['container'].nil?
             serialize_container(inst, xml, fragments)
-          when inst.has_key?('digital_object') && !inst['digital_object']['_resolved'].nil?
+          when inst.has_key?('digital_object') && !inst['digital_object']['_resolved'].nil? && @include_daos
             serialize_digital_object(inst['digital_object']['_resolved'], xml, fragments)
           end
         end

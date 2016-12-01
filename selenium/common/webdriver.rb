@@ -130,7 +130,7 @@ module Selenium
               try += 1
               sleep 0.5
               self.navigate.to(start_page)
-              puts "#{test_group_prefix}find_paginated_element: #{try} misses on selector '#{selectors}'.  Retrying..." if (try % 5) == 0
+              puts "#{test_group_prefix}find_paginated_element: #{try} misses on selector '#{selectors}'.  Retrying..." if (try > 0) && (try % 5) == 0
             else
               raise Selenium::WebDriver::Error::NoSuchElementError.new(selectors.inspect)
             end
@@ -143,6 +143,31 @@ module Selenium
         lambda {
           self.find_element(*selectors)
         }
+      end
+
+
+      def scroll_into_view(elt)
+        self.execute_script("arguments[0].scrollIntoView(true);", elt)
+
+        # Wait for the element to appear in our viewport
+        Selenium::Config.retries.times do |try|
+          in_viewport = self.execute_script("
+var rect = arguments[0].getBoundingClientRect();
+return (
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+    );
+", elt)
+          break if in_viewport
+          sleep 0.1
+        end
+
+        # If it's still not in the viewport we're optimistically charging ahead
+        # here and assuming that the calling test will fail if it really
+        # matters...
+        elt
       end
 
 
@@ -163,17 +188,12 @@ module Selenium
           rescue Selenium::WebDriver::Error::NoSuchElementError, Selenium::WebDriver::Error::StaleElementReferenceError => e
             if try < Selenium::Config.retries
               try += 1
-              $sleep_time += 0.1
+              $sleep_time += 0.5
               sleep 0.5
-              puts "#{test_group_prefix}find_element: #{try} misses on selector '#{selectors}'.  Retrying..." if (try % 5) == 0
+              puts "#{test_group_prefix}find_element: #{try} misses on selector '#{selectors}'.  Retrying..." if (try > 0) && (try % 5) == 0
 
             else
               puts "Failed to find #{selectors}"
-
-              if ENV['SCREENSHOT_ON_ERROR']
-                SeleniumTest.save_screenshot(self)
-              end
-
               raise e
             end
           end
@@ -252,6 +272,9 @@ module Selenium
         rescue Selenium::WebDriver::Error::StaleElementReferenceError
           if tries < Selenium::Config.retries
             tries += 1
+            $sleep_time += 0.5
+            sleep 0.5
+
             retry
           end
         end
@@ -379,7 +402,6 @@ module Selenium
 
       def find_element_with_text(xpath, pattern, noError = false, noRetry = false)
         Selenium::Config.retries.times do |try|
-
           matches = self.find_elements(:xpath => xpath)
 
           begin
@@ -394,16 +416,12 @@ module Selenium
             return nil
           end
 
-          $sleep_time += 0.1
+          $sleep_time += 0.5
           sleep 0.5
-          puts "find_element_with_text: #{try} misses on selector ':xpath => #{xpath}'.  Retrying..." if (try % 10) == 0
+          puts "find_element_with_text: #{try} misses on selector ':xpath => #{xpath}'.  Retrying..." if (try > 0) && (try % 10) == 0
         end
 
         return nil if noError
-
-        if ENV['SCREENSHOT_ON_ERROR']
-          SeleniumTest.save_screenshot(self)
-        end
 
         raise Selenium::WebDriver::Error::NoSuchElementError.new("Could not find element for xpath: #{xpath} pattern: #{pattern}")
       end
@@ -426,14 +444,10 @@ module Selenium
               try += 1
               $sleep_time += 0.1
               sleep 0.5
-              puts "#{test_group_prefix}find_element: #{try} misses on selector '#{selectors}'.  Retrying..." if (try % 5) == 0
+              puts "#{test_group_prefix}find_element: #{try} misses on selector '#{selectors}'.  Retrying..." if (try > 0) && (try % 5) == 0
 
             else
               puts "Failed to find #{selectors}"
-
-              if ENV['SCREENSHOT_ON_ERROR']
-                SeleniumTest.save_screenshot(self)
-              end
 
               raise e
             end

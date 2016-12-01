@@ -14,7 +14,7 @@ describe "Digital Objects" do
     @do2 = create(:digital_object)
 
     user = create_user(@repo => ['repository-archivists'])
-    @driver = Driver.new.login_to_repo(user, @repo)
+    @driver = Driver.get.login_to_repo(user, @repo)
   end
 
 
@@ -131,11 +131,10 @@ describe "Digital Objects" do
 
   end
 
-  it "can drag and drop reorder a Digital Object", :retry => 2, :retry_wait => 10 do
-    
+  it "can drag and drop reorder a Digital Object" do
+
     @driver.get("#{$frontend}#{@do.uri.sub(/\/repositories\/\d+/, '')}/edit#tree::digital_object_component_#{@do_child1.id}")
     @driver.wait_for_ajax
-    @driver.wait_until_gone(:css, ".spinner")
 
     # create grand child
     10.times do 
@@ -148,9 +147,12 @@ describe "Digital Objects" do
       end
     end
 
+    @driver.wait_for_ajax
+    @driver.find_element(:id, "digital_object_component_title_")
+
     @driver.clear_and_send_keys([:id, "digital_object_component_title_"], "ICO")
     @driver.clear_and_send_keys([:id, "digital_object_component_component_id_"],(Digest::MD5.hexdigest("#{Time.now}")))
-    
+
     10.times do
       begin
         @driver.click_and_wait_until_gone(:css => "form#new_digital_object_component button[type='submit']")
@@ -162,16 +164,16 @@ describe "Digital Objects" do
       end
     end
 
-    # first resize the tree pane (do it incrementally so it doesn't flip out...)
-    pane_resize_handle = @driver.find_element(:css => ".ui-resizable-handle.ui-resizable-s")
-    10.times {
-      @driver.action.drag_and_drop_by(pane_resize_handle, 0, 10).perform
-    }
+    # Resize the tree panel to show our tree
+    @driver.execute_script('$(".archives-tree-container").height(500)')
+    @driver.execute_script('$(".archives-tree").height(500)')
 
     #drag to become sibling of parent
     source = @driver.find_element_with_text("//div[@id='archives_tree']//a", /ICO/)
     target = @driver.find_element_with_text("//div[@id='archives_tree']//a", /#{@do.title}/)
     @driver.action.drag_and_drop(source, target).perform
+
+    @driver.wait_for_spinner
     @driver.wait_for_ajax
 
     target = @driver.find_element_with_text("//div[@id='archives_tree']//li", /#{@do.title}/)

@@ -5,7 +5,7 @@ describe "Enumeration Management" do
     @repo = create(:repo, :repo_code => "enum_test_#{Time.now.to_i}")
     set_repo @repo
 
-    @driver = Driver.new.login($admin)
+    @driver = Driver.get.login($admin)
   end
 
 
@@ -188,6 +188,11 @@ describe "Enumeration Management" do
     assert(5) {
       @driver.find_element_with_text('//tr', /fooman/).find_element(:link, "Unsuppress").should_not be_nil
     }
+    
+    assert(5) {
+      @driver.find_element_with_text('//tr', /fooman/).find_elements(:link, 'Delete').length.should eq(0)
+    }
+
     # now lets make sure it's there
     @driver.find_element(:link, "Create").click
     @driver.find_element(:link, "Accession").click
