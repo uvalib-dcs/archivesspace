@@ -45,7 +45,7 @@ class EADConverter < Converter
   # actually want to ever see them.
   def format_content(content)
   	return content if content.nil?
-    content.delete!("\n") # first we remove all linebreaks, since they're probably unintentional
+    content.tr!("\n", ' ') # literal linebreaks are assumed to not be part of data
     content.gsub(%r{<p(?: [^>/]*)?>},"").gsub(%r{</p>|<p(?:\s+[^>]*)?/>}, "\n\n")
       .gsub("<lb/>", "\n\n").gsub("<lb>","\n\n").gsub("</lb>","")
       .strip
@@ -393,11 +393,11 @@ class EADConverter < Converter
     end
 
 
-    %w(accessrestrict accessrestrict/legalstatus \
-       accruals acqinfo altformavail appraisal arrangement \
-       bioghist custodhist \
-       fileplan odd otherfindaid originalsloc phystech \
-       prefercite processinfo relatedmaterial scopecontent \
+    %w(accessrestrict accessrestrict/legalstatus
+       accruals acqinfo altformavail appraisal arrangement
+       bioghist custodhist
+       fileplan odd otherfindaid originalsloc phystech
+       prefercite processinfo relatedmaterial scopecontent
        separatedmaterial userestrict ).each do |note|
       with note do |node|
         content = inner_xml.tap {|xml|
