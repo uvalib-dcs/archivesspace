@@ -42,6 +42,8 @@ class EADSerializer < ASpaceExport::Serializer
 
 
   def handle_linebreaks(content)
+    # 4archon... 
+    content.gsub!("\n\t", "\n\n")  
     # if there's already p tags, just leave as is
     return content if ( content.strip =~ /^<p(\s|\/|>)/ or content.strip.length < 1 )
     original_content = content
@@ -232,6 +234,7 @@ class EADSerializer < ASpaceExport::Serializer
   def serialize_child(data, xml, fragments, c_depth = 1)
     begin
     return if data["publish"] === false && !@include_unpublished
+    return if data["suppressed"] === true
 
     tag_name = @use_numbered_c_tags ? :"c#{c_depth.to_s.rjust(2, '0')}" : :c
 
@@ -432,6 +435,8 @@ class EADSerializer < ASpaceExport::Serializer
 
   def serialize_digital_object(digital_object, xml, fragments)
     return if digital_object["publish"] === false && !@include_unpublished
+    return if digital_object["suppressed"] === true
+
     file_versions = digital_object['file_versions']
     title = digital_object['title']
     date = digital_object['dates'][0] || {}

@@ -39,3 +39,5 @@ locales.diff
 */bower_components
 Gemfile.local
 supervisord.*
+mysql-connector*.jar
+common/config/config.rb

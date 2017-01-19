@@ -165,7 +165,7 @@ class EADConverter < Converter
       norm_dates.map! {|d| d =~ /^([0-9]{4}(\-(1[0-2]|0[1-9])(\-(0[1-9]|[12][0-9]|3[01]))?)?)$/ ? d : nil}
 
       make :date, {
-        :date_type => att('type') || 'inclusive',
+        :date_type => att('type') || ( norm_dates[1] ? 'inclusive' : 'single' ),
         :expression => inner_xml,
         :label => 'creation',
         :begin => norm_dates[0],
@@ -176,6 +176,28 @@ class EADConverter < Converter
       } do |date|
         set ancestor(:resource, :archival_object), :dates, date
       end
+    end
+
+
+    with "note" do
+      ancestor(:note_multipart, :resource, :archival_object) do |obj|
+        case obj.class.record_type
+        when 'archival_object'
+          make :note_multipart, {
+            :type => 'odd',
+            :persistent_id => att('id'),
+            :publish => att('audience') != 'internal',
+            :subnotes => {
+              :publish => att('audience') != 'internal',
+              'jsonmodel_type' => 'note_text',
+              'content' => format_content( inner_xml )
+            }
+          } do |note|
+            set ancestor(:resource, :archival_object), :notes, note
+          end
+        end
+      end
+
     end
 
 
