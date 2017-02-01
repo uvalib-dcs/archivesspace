@@ -831,11 +831,13 @@ en:
   user:
     _frontend:
       messages:
+        access_denied: Access denied. Login as the admin user to perform this action.
         created: User Created
         updated: User Saved
         deleted: User Deleted
         error_update: User not saved
         error_create: User not created
+        group_not_required: User is an administrator or system user, group selection is not required.
       section:
         manage_access: Manage User Access
         account: Account
@@ -901,6 +903,9 @@ en:
       save_template: Save Template
       template_name: Template name
       confirm_removal: Confirm Removal
+    templates:
+      listing: Templates
+      no_templates: No templates defined
     default_template: Default Template
     messages:
       error_prefix: Row

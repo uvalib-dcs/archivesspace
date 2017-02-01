@@ -179,25 +179,19 @@ class EADConverter < Converter
     end
 
 
-    with "note" do
-      ancestor(:note_multipart, :resource, :archival_object) do |obj|
-        case obj.class.record_type
-        when 'archival_object'
-          make :note_multipart, {
-            :type => 'odd',
-            :persistent_id => att('id'),
-            :publish => att('audience') != 'internal',
-            :subnotes => {
-              :publish => att('audience') != 'internal',
-              'jsonmodel_type' => 'note_text',
-              'content' => format_content( inner_xml )
-            }
-          } do |note|
-            set ancestor(:resource, :archival_object), :notes, note
-          end
-        end
+    with "archdesc/note" do
+      make :note_multipart, {
+        :type => 'odd',
+        :persistent_id => att('id'),
+        :publish => att('audience') != 'internal',
+        :subnotes => {
+          :publish => att('audience') != 'internal',
+          'jsonmodel_type' => 'note_text',
+          'content' => format_content( inner_xml )
+        }
+      } do |note|
+        set ancestor(:resource, :archival_object), :notes, note
       end
-
     end
 
 
