@@ -12,6 +12,11 @@ end
 require_relative 'lib/bootstrap'
 ASpaceEnvironment.init
 
+
+require 'archivesspace_thread_dump'
+ArchivesSpaceThreadDump.init(File.join(ASUtils.find_base_directory, "thread_dump_backend.txt"))
+
+
 require_relative 'lib/uri_resolver'
 require_relative 'lib/rest'
 require_relative 'lib/crud_helpers'
@@ -63,6 +68,7 @@ class ArchivesSpaceService < Sinatra::Base
     config.dont_reload File.join("**", "spec", "*.rb")
 
     set :server, :mizuno
+    set :server_settings, {:reuse_address => true}
   end
 
   configure :test do |config|

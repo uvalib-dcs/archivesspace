@@ -91,6 +91,13 @@
     <delete dir="gems/gems" />
     <delete dir="gems/bin" />
     <delete dir="gems/specifications" />
+
+    <!-- Delete any bundler configs to avoid exclude groups sticking
+         around between runs. -->
+    <delete>
+      <fileset dir=".." includes="*/.bundle/config" />
+    </delete>
+
     <property name="excluded-gem-groups" value="" />
     <property name="build.home" location="."/>
     <condition property="public-dir" value="public-new" else="public">
@@ -255,6 +262,9 @@
     <delete dir="integration.tmp" />
     <delete dir="${java.io.tmpdir}/winstone.${user.name}" />
     <mkdir dir="${java.io.tmpdir}/winstone.${user.name}" />
+
+    <mkdir dir="../build/solr_home/collection1/conf" />
+
     <parallel>
       <daemons>
         <java
