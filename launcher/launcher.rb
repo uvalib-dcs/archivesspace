@@ -96,7 +96,7 @@ end
 def generate_secret_for(secret)
   file = File.join(AppConfig[:data_directory], "#{secret}_cookie_secret.dat")
 
-  if !File.exists?(file)
+  if !File.exist?(file)
     File.write(file, SecureRandom.hex)
 
     puts "****"
@@ -133,6 +133,10 @@ def main
   if AppConfig[:enable_solr]
     java.lang.System.set_property("solr.data.dir", AppConfig[:solr_index_directory])
     java.lang.System.set_property("solr.solr.home", AppConfig[:solr_home_directory])
+
+    # Windows complains if this directory is missing.  Just create it if needed
+    # and move on with our lives.
+    FileUtils.mkdir_p(File.join(AppConfig[:solr_home_directory], "collection1", "conf"))
   end
 
   [:search_user_secret, :public_user_secret, :staff_user_secret].each do |property|
@@ -189,11 +193,18 @@ def stop_server(uri)j
     shutdown_uri = uri.clone 
     shutdown_uri.path = "/xkcd/shutdown"
     response = Net::HTTP.post_form(shutdown_uri, 'token' => generate_secret_for("jetty_shutdown"))
-    #now we check to see if indeed the server has shutdown. should return an
-    #connection error. 
-    Net::HTTP.get(uri)
     
-    raise "Jetty Shutdown error on #{uri.to_s}. Shutdown returned:  #{response.body}"
+    if response.code != 404
+      #now we check to see if indeed the server has shutdown. should return an
+      #connection error. 
+      Net::HTTP.get(uri)
+      
+      puts "Jetty Shutdown error on #{uri.to_s}"
+      puts "Shutdown returned: #{response.code}"
+      puts "#{response.body}"
+    else
+      puts "Jetty Shutdown handler does not exist"
+    end
 
 rescue Errno::ECONNREFUSED, SocketError, EOFError => se
   # A little odd, but when jetty shutdowns it just shutsdown and no response is
@@ -201,18 +212,23 @@ rescue Errno::ECONNREFUSED, SocketError, EOFError => se
   # Connection, socket, or a rbuff_fill execption. When this happens, we can
   # assume the shutdown has worked. 
   puts "#{uri.to_s} not running"
+rescue Exception => e
+  # Server is possibly still running so overall shutdown may fail
+  puts "Unexpected shutdown error"
+  puts e.inspect
 end
 
 
 def stop
-  if AppConfig[:use_jetty_shutdown_handler]  
-    stop_server(URI(AppConfig[:backend_url])) if AppConfig[:enable_backend]
-    stop_server(URI(AppConfig[:solr_url])) if AppConfig[:enable_solr]
-    stop_server(URI(AppConfig[:indexer_url])) if AppConfig[:enable_indexer]
+  if AppConfig[:use_jetty_shutdown_handler]
     stop_server(URI(AppConfig[:frontend_url])) if AppConfig[:enable_frontend]
     stop_server(URI(AppConfig[:public_url])) if AppConfig[:enable_public]
-    pid_file = File.join(AppConfig[:data_directory], ".archivesspace.pid" ) 
-    FileUtils.rm(pid_file) if File.exists?(pid_file)
+    stop_server(URI(AppConfig[:docs_url])) if AppConfig[:enable_docs]
+    stop_server(URI(AppConfig[:indexer_url])) if AppConfig[:enable_indexer]
+    stop_server(URI(AppConfig[:solr_url])) if AppConfig[:enable_solr]
+    stop_server(URI(AppConfig[:backend_url])) if AppConfig[:enable_backend]
+    pid_file = File.join(AppConfig[:data_directory], ".archivesspace.pid" )
+    FileUtils.rm(pid_file) if File.exist?(pid_file)
     java.lang.System.exit(0)
   else
     puts "****"
@@ -227,7 +243,7 @@ end
 
 launcher_rc = File.join(java.lang.System.get_property("ASPACE_LAUNCHER_BASE"), "launcher_rc.rb")
 
-if java.lang.System.get_property("ASPACE_LAUNCHER_BASE") && File.exists?(launcher_rc)
+if java.lang.System.get_property("ASPACE_LAUNCHER_BASE") && File.exist?(launcher_rc)
   load File.absolute_path(launcher_rc)
 end
 
