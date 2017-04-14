@@ -830,13 +830,16 @@
 
   <!-- Public Interface -->
   <target name="public:clean" description="Delete the Rails tmp directory">
-    <condition property="public-dir" value="public-new" else="public">
-      <equals arg1="${env.ASPACE_PUBLIC_NEW}" arg2="true" />
-    </condition>
-    <delete dir="../${public-dir}/tmp" />
-    <delete dir="../${public-dir}/public/assets" />
-    <mkdir dir="../${public-dir}/public/assets" />
-    <mkdir dir="../${public-dir}/public/assets/00-do-not-put-things-here" />
+
+    <delete dir="../public/tmp" />
+    <delete dir="../public/public/assets" />
+    <mkdir dir="../public/public/assets" />
+    <mkdir dir="../public/public/assets/00-do-not-put-things-here" />
+
+    <delete dir="../public-new/tmp" />
+    <delete dir="../public-new/public/assets" />
+    <mkdir dir="../public-new/public/assets" />
+    <mkdir dir="../public-new/public/assets/00-do-not-put-things-here" />
   </target>
 
 
