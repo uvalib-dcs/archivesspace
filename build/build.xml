@@ -870,21 +870,31 @@
   </target>
 
 
-  <target name="public:devserver" depends="set-classpath, public:clean, public:copy-shared-resources" description="Start an instance of the ArchivesSpacePublic development server">
-    <condition property="public-dir" value="public-new" else="public">
-      <equals arg1="${env.ASPACE_PUBLIC_NEW}" arg2="true" />
-    </condition>
+
+  <target name="public:devserver" >
+      <antcall target="public:-devserver" />
+  </target>
+  
+  <target name="public-new:devserver" >
+      <antcall target="public:-devserver" >
+          <param name="publicdir" value="public-new" />
+          <param name="public_port" value="${aspace.public-new.port}" /></antcall>
+  </target>
+
+  <target name="public:-devserver" depends="set-classpath, public:clean, public:copy-shared-resources" description="Start an instance of the ArchivesSpacePublic development server">
+    <property name="publicdir" value="public" />
+    <property name="public_port" value="${aspace.public.port}" />
     <condition property="rails-bin" value="bin" else="script">
-      <equals arg1="${env.ASPACE_PUBLIC_NEW}" arg2="true" />
+      <equals arg1="${publicdir}" arg2="public-new" />
     </condition>
     <java classpath="${jruby_classpath}" classname="org.jruby.Main" fork="true" failonerror="true"
-          dir="../${public-dir}">
+          dir="../${publicdir}">
       <jvmarg line="-Daspace.service=public -Daspace.config.backend_url=http://localhost:${aspace.backend.port}/ ${default_java_options} ${env.JAVA_OPTS}"/>
       <env key="GEM_HOME" value="${gem_home}" />
       <env key="GEM_PATH" value="" />
       <env key="BUNDLE_PATH" value="${gem_home}" />
       <env key="ASPACE_INTEGRATION" value="${aspace.integration}" />
-      <arg line="${rails-bin}/rails s mizuno -b 0.0.0.0 --port=${aspace.public.port}" />
+      <arg line="${rails-bin}/rails s mizuno -b 0.0.0.0 --port=${public_port}" />
     </java>
   </target>
 
