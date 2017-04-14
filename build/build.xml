@@ -15,6 +15,7 @@
   <property name="aspace.backend.port" value="4567" />
   <property name="aspace.frontend.port" value="3000" />
   <property name="aspace.public.port" value="3001" />
+  <property name="aspace.public-new.port" value="3002" />
   <property name="aspace.solr.port" value="2999" />
   <property name="aspace.data_directory" value="${basedir}/../build" />
 
@@ -120,7 +121,8 @@
     <antcall target="bundler"><param name="gemfile" value="../frontend/Gemfile" /></antcall>
     <antcall target="bundler"><param name="gemfile" value="../selenium/Gemfile" /></antcall>
     <antcall target="bundler"><param name="gemfile" value="../_yard/Gemfile" /></antcall>
-    <antcall target="bundler"><param name="gemfile" value="../${public-dir}/Gemfile" /></antcall>
+    <antcall target="bundler"><param name="gemfile" value="../public/Gemfile" /></antcall>
+    <antcall target="bundler"><param name="gemfile" value="../public-new/Gemfile" /></antcall>
     <antcall target="bundler"><param name="gemfile" value="../selenium-public/Gemfile" /></antcall>
     <antcall target="bundler"><param name="gemfile" value="../indexer/Gemfile" /></antcall>
   </target>
@@ -708,7 +710,8 @@
     <copy file="solr.war" todir="target/archivesspace/wars" />
     <copy file="../backend/backend.war" todir="target/archivesspace/wars" />
     <copy file="../frontend/frontend.war" todir="target/archivesspace/wars" />
-    <copy file="../${public-dir}/${public-dir}.war" tofile="target/archivesspace/wars/public.war" />
+    <copy file="../public/public.war" tofile="target/archivesspace/wars/public.war" />
+    <copy file="../public-new/public-new.war" tofile="target/archivesspace/wars/public-new.war" />
     <copy file="../indexer/indexer.war" todir="target/archivesspace/wars" />
 
     <copy file="scripts/migrate_db.rb" todir="target/archivesspace/scripts/rb" />
@@ -795,7 +798,10 @@
     <antcall target="bootstrap"><param name="excluded-gem-groups" value="test development doc" /></antcall>
     <antcall target="backend:war"><param name="excluded-gem-groups" value="test development doc" /></antcall>
     <antcall target="frontend:war"><param name="excluded-gem-groups" value="test development doc" /></antcall>
-    <antcall target="public:war"><param name="excluded-gem-groups" value="test development doc" /></antcall>
+    <antcall target="public:war"><param name="excluded-gem-groups" value="test development doc" />
+        <param name="publicdir" value="public" /></antcall>
+    <antcall target="public:war"><param name="excluded-gem-groups" value="test development doc" />
+        <param name="publicdir" value="public-new" /></antcall>
     <antcall target="solr:war"><param name="excluded-gem-groups" value="test development doc" /></antcall>
     <antcall target="indexer:war"><param name="excluded-gem-groups" value="test development doc" /></antcall>
     <antcall target="build-zip"><param name="excluded-gem-groups" value="test development doc" /></antcall>
@@ -881,16 +887,15 @@
 
 
   <target name="public:war" depends="set-classpath, public:clean, public:copy-shared-resources" description="Deploy the public application as a .war file">
-    <condition property="public-dir" value="public-new" else="public">
-      <equals arg1="${env.ASPACE_PUBLIC_NEW}" arg2="true" />
-    </condition>
-   <echo message="Precompiling Rails assets for Public (this can take a little while...)" />
+      <property name="publicdir" value="" />
+
+   <echo message="Precompiling Rails assets for Public ${publicdir} (this can take a little while...)" />
 
     <delete dir="../public/tmp" />
 
     <java classpath="${jruby_classpath}" classname="org.jruby.Main" fork="true"
           failonerror="true"
-          dir="../${public-dir}">
+          dir="../${publicdir}">
       <jvmarg line="${default_java_options} ${env.JAVA_OPTS}" />
       <env key="RAILS_ENV" value="production" />
       <env key="GEM_HOME" value="${gem_home}" />
@@ -901,7 +906,7 @@
 
     <java classpath="${jruby_classpath}" classname="org.jruby.Main" fork="true"
           failonerror="true"
-          dir="../${public-dir}">
+          dir="../${publicdir}">
       <jvmarg line="${default_java_options} ${env.JAVA_OPTS}"/>
       <env key="RAILS_ENV" value="production" />
       <env key="GEM_HOME" value="${gem_home}" />
