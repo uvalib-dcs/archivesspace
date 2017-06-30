@@ -1,6 +1,6 @@
 $(function () {
 
-  var padding = 3;
+  var padding = 4;
 
   var pad_number = function (number, padding) {
     var s = ('' + number);
@@ -21,15 +21,17 @@ $(function () {
       data: {},
       type: "POST",
       success: function(identifier) {
-        $('#accession_id_0_').val(identifier.year);
-        $('#accession_id_1_').val(pad_number(identifier.number, padding));
-
+        $('#accession_id_0_').val(identifier.org_code);
+        $('#accession_id_1_').val(identifier.year);
+        $('#accession_id_2_').val(pad_number(identifier.number, padding));
         $('#accession_id_1_').enable();
+        $('#accession_id_2_').enable();
       },
     })
   };
 
-
+  
+ 
   var identifier_is_blank = function () {
     for (var i = 0; i < 4; i++) {
       if ($("#accession_id_" + i + "_").val() !== "") {
@@ -41,8 +43,16 @@ $(function () {
   };
 
 
+  var use_default_values = function () {
+      return $.ajax( { 
+          url: APP_PATH + "plugins/generate_accession_identifier/default_values",
+          type: "GET", async: false, 
+          success: function(val) { use_default_values = val; },
+      }).responseText == "true" ;
+  };
 
-  if (identifier_is_blank()) {
+
+  if (identifier_is_blank() && use_default_values() ) {
     generate_accession_id();
   }
 
