@@ -108,8 +108,8 @@ class FindingAidPDF
     renderer.create_pdf(pdf_output_stream)
     pdf_output_stream.close
 
-    out_html.unlink
+    out_html #.unlink
 
-    pdf_file
+    # pdf_file
   end
 end

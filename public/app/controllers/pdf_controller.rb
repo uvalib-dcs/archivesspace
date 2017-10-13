@@ -24,7 +24,7 @@ class PdfController <  ApplicationController
 
         format.all do
           fh = File.open(pdf_file.path, "r")
-          self.headers["Content-type"] = "application/pdf"
+          self.headers["Content-type"] =  "text/html" #"application/pdf"
           self.headers["Content-disposition"] = "attachment; filename=\"#{filename}\""
           self.response_body = Enumerator.new do |y|
             begin
