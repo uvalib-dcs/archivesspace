@@ -189,6 +189,8 @@ ArchivesSpace::Application.routes.draw do
 
     match 'search' => 'search#do_search', :via => [:get]
     match 'advanced_search' => 'search#advanced_search', :via => [:get]
+    match 'global_search' => 'search#global_search', :via => [:get]
+
 
     match 'resolve/edit' => 'resolver#resolve_edit', :via => [:get]
     match 'resolve/readonly' => 'resolver#resolve_readonly', :via => [:get]

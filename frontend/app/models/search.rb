@@ -27,9 +27,13 @@ class Search
 
     criteria["page"] = 1 if not criteria.has_key?("page")
 
-    search_data = JSONModel::HTTP::get_json("/search/#{type}", criteria)
+    if type.nil?
+      search_data = JSONModel::HTTP::get_json("/search", criteria)
+    else
+      search_data = JSONModel::HTTP::get_json("/search/#{type}", criteria)
+    end
     search_data[:criteria] = criteria
-    search_data[:type] = type
+    search_data[:type] = type unless type.nil?
     SearchResultData.new(search_data)
   end
 

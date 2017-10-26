@@ -2,7 +2,7 @@ require 'advanced_query_builder'
 
 class SearchController < ApplicationController
 
-  set_access_control  "view_repository" => [:do_search, :advanced_search]
+  set_access_control  "view_repository" => [:do_search, :advanced_search, :global_search]
   
   include ExportHelper
 
@@ -73,4 +73,28 @@ class SearchController < ApplicationController
     end
   end
 
+  def global_search
+    respond_to do |format|
+      format.json {
+        @search_data = Search.global( params_for_backend_search.merge({"facet[]" => SearchResultData.BASE_FACETS.concat(params[:facets]||[]).uniq}), nil)
+        @display_identifier = params[:display_identifier] ? params[:display_identifier] : false
+        render :json => @search_data
+      }
+      format.js {
+        @search_data = Search.global( params_for_backend_search.merge({"facet[]" => SearchResultData.BASE_FACETS.concat(params[:facets]||[]).uniq}), nil)
+        @display_identifier = params[:display_identifier] ? params[:display_identifier] : false
+        if params[:listing_only]
+          render_aspace_partial :partial => "search/listing"
+        else
+          render_aspace_partial :partial => "search/results"
+        end
+      }
+      format.html {
+        @search_data = Search.global( params_for_backend_search.merge({"facet[]" => SearchResultData.BASE_FACETS.concat(params[:facets]||[]).uniq}), nil)
+        @display_identifier = params[:display_identifier] ? params[:display_identifier] : false
+        render "do_search"
+      }
+
+    end
+  end
 end
