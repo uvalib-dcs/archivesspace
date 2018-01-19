@@ -1,5 +1,5 @@
 
-class UserListReport < AbstractReport
+class UserGroupsReport < AbstractReport
 
   register_report
 

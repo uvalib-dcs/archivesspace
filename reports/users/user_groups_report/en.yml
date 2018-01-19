@@ -1,7 +1,7 @@
 en:
   reports:
-    user_list_report:
-      title: ArchivesSpace Users
+    user_groups_report:
+      title: User permission/access groups
       description: Displays users and repository access groups
 
 
