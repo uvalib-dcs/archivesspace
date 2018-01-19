@@ -8,13 +8,13 @@ class UserListReport < AbstractReport
   end
 
   def headers
-    [ 'name', 'department', 'groups' ]
+    [ 'name', 'department', 'title', 'groups' ]
   end
 
   def query
 
     db[:user].join( :group_user, :user_id => :id ).join( :group, :id => :group_id ).select(
-    :name, :department, Sequel.as(  Sequel.function(:GROUP_CONCAT, :description ), :groups )).group_by(:user_id)
+    :name, :department, :title, Sequel.as(  Sequel.function(:GROUP_CONCAT, :description ), :groups )).group_by(:user_id)
     
   end
 end
