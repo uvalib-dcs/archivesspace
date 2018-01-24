@@ -49,6 +49,9 @@ be used to override or extend the behavior of the core application.
     migrations ............ database migrations
     schemas ............... JSONModel schema definitions
     search_definitions.rb . Advanced search fields
+    reports ...............
+    reports/static ........
+    stylesheets ...........
 
 
 ** Overriding locales
