@@ -3,15 +3,23 @@
   <h1><%= h @report.title %></h1>
 </div>
 
-<table class="report-listing">
+<table class="report-listing" style="width:110%" >
   <thead>
   <tr>
     <% @report.headers.each do |heading| %>
-      <th><%= transform_text(heading.to_s) %></th>
+      <% if (heading == 'user_id') %>
+      <th style="width:2em;" >id</th>
+      <% elsif ( heading == 'groups') %>
+      <th style="width:40%;" ><%= transform_text(heading.to_s) %></th>
+      <% elsif ( heading == 'name') %>
+      <th style="width:10em;" ><%= transform_text(heading.to_s) %></th>
+      <% else %>
+      <th  ><%= transform_text(heading.to_s) %></th>
+      <% end %>
     <% end %>
   </tr>
   </thead>
-  <tbody>
+  <tbody style="font-size:smaller;" >
   <% @report.each do |record| %>
     <tr>
       <% @report.headers.each do |heading| %>
