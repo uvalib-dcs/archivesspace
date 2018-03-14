@@ -1,0 +1,8 @@
+en:
+  reports:
+    user_groups_report:
+      title: User permission/access groups
+      description: Displays users and repository access groups
+
+
+

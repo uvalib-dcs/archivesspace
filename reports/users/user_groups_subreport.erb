@@ -1,0 +1,5 @@
+<ul style="list-style-type:none" >
+    <% @report.each do |group| %>
+        <li><%= group.fetch('description')%></li> 
+    <% end %>
+</ul>
