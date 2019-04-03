@@ -21,6 +21,7 @@ class ResourcesListReport < AbstractReport
 		ReportUtils.fix_identifier_format(row)
 		row[:date] = ResourcesListDatesSubreport.new(self, row[:id]).get_content
 		row[:extent] = ExtentSubreport.new(self, row[:id]).get_content
+		row[:collection_management] = CollectionManagementSubreport.new( self, row[:id] ).get_content
 		row.delete(:id)
 	end
 

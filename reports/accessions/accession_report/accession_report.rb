@@ -108,10 +108,16 @@ class AccessionReport < AbstractReport
     row[:locations] = AccessionLocationsSubreport.new(self, id).get_content
     row[:names] = AccessionNamesSubreport.new(self, id).get_content
     row[:subjects] = AccessionSubjectsSubreport.new(self, id).get_content
+    row[:collection_management] = CollectionManagementSubreport.new( self, id).get_content
     row.delete(:accession_id)
   end
 
   def identifier_field
     :accession_number
   end
+
+  def record_type
+    'accession'
+  end
+
 end
